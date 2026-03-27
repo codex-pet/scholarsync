@@ -12,6 +12,10 @@
 
 body {
   background-color: var(--background);
+  background-image: radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                    radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+  background-attachment: fixed;
+  background-position: center;
   font-family: 'Inter', sans-serif;
   color: #2D2D2D;
   overflow-x: hidden;
