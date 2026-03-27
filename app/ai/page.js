@@ -76,7 +76,7 @@ export default function AIWorkspace() {
             >
               <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
               <UploadCloud size={32} className="text-indigo-500 mb-3" />
-              <p className="font-bold text-[#2B3674] text-sm">Drag & Drop a file or Click to upload</p>
+              <p className="font-bold text-[#2B3674] text-sm">Click or Drag & Drop to upload</p>
               <p className="text-slate-400 text-[11px] mt-1">PDF, DOCX, or Images(Max 10MB)</p>
             </div>
 
