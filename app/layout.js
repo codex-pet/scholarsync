@@ -1,29 +1,23 @@
-"use client";
+// app/layout.js
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import Profile from "@/components/Profile";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import ClientLayout from "./ClientLayout";
+
+// THIS IS WHERE YOU CHANGE THE ICON AND TITLE
+export const metadata = {
+  title: "ScholarSync",
+  description: "Your project description",
+  icons: {
+    icon: "/scholarsync-logo.ico",
+  },
+};
 
 export default function RootLayout({ children }) {
-  const pathname = usePathname();
-  const isAuthPage = pathname === "/login";
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-
   return (
     <html lang="en">
-      <body className="flex min-h-screen">
-        {!isAuthPage && (
-          <Sidebar 
-            isExpanded={isSidebarExpanded} 
-            setIsExpanded={setIsSidebarExpanded} 
-          />
-        )}
-        {!isAuthPage && <Profile />}
-        <main className={`flex-1 transition-all duration-300 ${!isAuthPage ? (isSidebarExpanded ? "pl-[220px]" : "pl-32") : ""}`}>
-          {children}
-        </main>
-      </body>
+      {/* We move the body and logic into the ClientLayout component */}
+      <ClientLayout>
+        {children}
+      </ClientLayout>
     </html>
   );
 }
