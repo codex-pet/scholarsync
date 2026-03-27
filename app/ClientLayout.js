@@ -1,25 +1,26 @@
 // app/ClientLayout.js
 "use client";
-import Sidebar from "@/components/Sidebar";
-import Profile from "@/components/Profile";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import React, { useState } from 'react';
+import Sidebar from '@/components/Sidebar';
+import Profile from '@/components/Profile'; // Import the new Profile
 
 export default function ClientLayout({ children }) {
-    const pathname = usePathname();
-    const isAuthPage = pathname === "/login";
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <body className="flex min-h-screen">
-            {!isAuthPage && (
-                <Sidebar
-                    isExpanded={isSidebarExpanded}
-                    setIsExpanded={setIsSidebarExpanded}
-                />
-            )}
-            {!isAuthPage && <Profile />}
-            <main className={`flex-1 transition-all duration-300 ${!isAuthPage ? (isSidebarExpanded ? "pl-[220px]" : "pl-32") : ""}`}>
+        <body className="bg-[#F8FAFC] min-h-screen relative overflow-x-hidden">
+            {/* 1. Background Blobs (Essential for Glass look) */}
+            <div className="fixed top-[-10%] left-[-5%] w-[40rem] h-[40rem] bg-indigo-200/40 rounded-full blur-[120px] -z-10" />
+            <div className="fixed bottom-[-5%] left-[-2%] w-[25rem] h-[25rem] bg-purple-200/40 rounded-full blur-[100px] -z-10" />
+
+            {/* 2. Floating Sidebar */}
+            <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
+
+            {/* 3. Independent Floating Profile */}
+            <Profile />
+
+            {/* 4. Main Content */}
+            <main className={`transition-all duration-500 ${isExpanded ? 'pl-72' : 'pl-32'}`}>
                 {children}
             </main>
         </body>

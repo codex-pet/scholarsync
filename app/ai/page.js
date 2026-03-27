@@ -39,7 +39,7 @@ export default function AIWorkspace() {
   ];
 
   return (
-    <div className="p-6 lg:p-8 h-screen flex flex-col gap-6 max-w-[1600px] mx-auto bg-[#FAF9F6]">
+    <div className="p-6 lg:p-8 h-screen flex flex-col gap-6 max-w-[1600px] mx-auto">
       
       {/* Header */}
       <header className="flex flex-col px-2">
@@ -55,7 +55,7 @@ export default function AIWorkspace() {
         {/* ========================================== */}
         {/* LEFT PANE: Knowledge Base (33%)            */}
         {/* ========================================== */}
-        <div className="lg:col-span-4 bg-white rounded-[32px] flex flex-col overflow-hidden h-full border border-slate-100 shadow-sm">
+        <div className="lg:col-span-4 bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.06)] rounded-[32px] flex flex-col overflow-hidden h-full">
           
           <div className="p-6 flex items-center gap-3">
             <LibraryBig className="text-indigo-500" size={22} />
@@ -122,7 +122,7 @@ export default function AIWorkspace() {
         {/* ========================================== */}
         {/* RIGHT PANE: Chat Workspace (66%)           */}
         {/* ========================================== */}
-        <div className="lg:col-span-8 bg-white rounded-[32px] flex flex-col h-full border border-slate-100 shadow-sm relative overflow-hidden">
+        <div className="lg:col-span-8 bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.06)] rounded-[32px] flex flex-col h-full relative overflow-hidden">
           
           {/* Header & Interactive RAG Button */}
           <div className="px-8 py-5 flex items-center justify-between z-10 border-b border-slate-50">
@@ -144,7 +144,7 @@ export default function AIWorkspace() {
 
           {/* RAG Note Positioned at the TOP */}
           {isRagMode && (
-            <div className="bg-[#FAF9F6]/50 px-8 py-3 flex items-center gap-2 text-xs text-slate-500 font-medium border-b border-slate-50">
+            <div className="bg-white/20 px-8 py-3 flex items-center gap-2 text-xs text-slate-500 font-medium border-b border-white/30">
               <ShieldCheck size={16} className="text-green-500 shrink-0" />
               <span>Responses are strictly generated from your selected materials to ensure academic accuracy.</span>
             </div>
@@ -157,7 +157,7 @@ export default function AIWorkspace() {
                 {isRagMode ? (
                   <div className="w-full">
                     {selectedCount > 0 ? (
-                      <div className="bg-[#FAF9F6] border border-slate-100 shadow-sm p-8 rounded-[32px] text-slate-600 text-center">
+                      <div className="bg-white/40 border border-white/60 backdrop-blur-md shadow-sm p-8 rounded-[32px] text-slate-600 text-center">
                         <Wand2 size={32} className="text-indigo-400 mx-auto mb-4" />
                         <p className="text-lg font-medium mb-2 text-[#2B3674]">
                           I am analyzing <strong className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{selectedCount} files</strong> from your Knowledge Base.
@@ -204,7 +204,7 @@ export default function AIWorkspace() {
               <input 
                 placeholder={isRagMode ? (selectedCount > 0 ? "Ask a question about your materials..." : "Waiting for file selection...") : "Ask me anything..."}
                 disabled={isInputDisabled}
-                className="w-full py-4 px-6 rounded-full bg-[#F8FAFC] border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-200 focus:bg-white transition-all text-sm font-medium pr-16 text-slate-700 placeholder:text-slate-400 disabled:opacity-60" 
+                className="w-full py-4 px-6 rounded-full bg-white/60 backdrop-blur-md border border-white/60 outline-none focus:ring-2 focus:ring-indigo-200 focus:bg-white/80 transition-all text-sm font-medium pr-16 text-slate-700 placeholder:text-slate-400 disabled:opacity-60" 
               />
               <button 
                 disabled={isInputDisabled}
