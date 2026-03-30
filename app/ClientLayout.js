@@ -3,9 +3,19 @@
 import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Profile from '@/components/Profile'; // Import the new Profile
+import AuthPage from '@/components/AuthPage';
 
 export default function ClientLayout({ children }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    if (!isAuthenticated) {
+    return (
+        <body className="bg-[#F8FAFC]">
+            <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />
+        </body>
+    );
+}
 
     return (
         <body className="bg-[#F8FAFC] min-h-screen relative overflow-x-hidden">
