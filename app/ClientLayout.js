@@ -3,15 +3,20 @@
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import Profile from '@/components/Profile';
+import Profile from '@/components/Profile'; // Import the new Profile
+import AuthPage from '@/components/AuthPage';
 
 export default function ClientLayout({ children }) {
     const [isExpanded, setIsExpanded] = useState(false);
-    const pathname = usePathname();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Auth pages ("/", "/login") get a clean layout — no sidebar, no profile
-    const authRoutes = ['/', '/login'];
-    const isDashboardRoute = !authRoutes.includes(pathname);
+    if (!isAuthenticated) {
+    return (
+        <body className="bg-[#F8FAFC]">
+            <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />
+        </body>
+    );
+}
 
     return (
         <body className="bg-[#F8FAFC] min-h-screen relative overflow-x-hidden">
