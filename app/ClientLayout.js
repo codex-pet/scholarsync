@@ -7,16 +7,14 @@ import Profile from '@/components/Profile'; // Import the new Profile
 import AuthPage from '@/components/AuthPage';
 
 export default function ClientLayout({ children }) {
+    const pathname = usePathname();
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(true);
 
-    if (!isAuthenticated) {
-    return (
-        <body className="bg-[#F8FAFC]">
-            <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />
-        </body>
-    );
-}
+    // Route detection logic
+    const isLandingPage = pathname === '/';
+    const isLoginPage = pathname === '/login';
+    const isDashboardRoute = !isLandingPage && !isLoginPage;
 
     return (
         <body className="bg-[#F8FAFC] min-h-screen relative overflow-x-hidden">
@@ -28,18 +26,25 @@ export default function ClientLayout({ children }) {
                 </>
             )}
 
-            {/* Floating Sidebar — only on dashboard routes */}
+            {/* Floating Sidebar — only on dashboard routes (regardless of auth) */}
             {isDashboardRoute && (
                 <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
             )}
 
-            {/* Independent Floating Profile — only on dashboard routes */}
-            {isDashboardRoute && <Profile />}
+            {/* Independent Floating Profile — only on dashboard routes when authenticated */}
+            {isDashboardRoute && isAuthenticated && <Profile />}
 
-            {/* Main Content */}
+            {/* Main Content Area */}
             <main className={`transition-all duration-500 ${isDashboardRoute ? (isExpanded ? 'pl-72' : 'pl-32') : ''}`}>
-                {children}
+                {isDashboardRoute && !isAuthenticated ? (
+                    <div className="flex items-center justify-center min-h-screen p-8">
+                        <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />
+                    </div>
+                ) : (
+                    children
+                )}
             </main>
         </body>
     );
 }
+
