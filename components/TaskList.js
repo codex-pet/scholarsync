@@ -9,7 +9,7 @@ export default function TaskList() {
   return (
     <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-50">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="font-bold text-slate-800 text-lg">Today's Tasks</h3>
+        <h3 className="font-bold text-slate-800 text-lg">Today&apos;s Tasks</h3>
         <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg">1/3</span>
       </div>
       

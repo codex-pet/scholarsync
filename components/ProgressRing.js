@@ -37,8 +37,8 @@ export default function ProgressRing({ percentage }) {
         </div>
       </div>
       <div className="mt-10 text-center">
-        <p className="font-bold text-slate-700">Today's Progress</p>
-        <p className="text-xs text-slate-400 mt-1 italic">Keep going! You're doing great 🌱</p>
+        <p className="font-bold text-slate-700">Today&apos;s Progress</p>
+        <p className="text-xs text-slate-400 mt-1 italic">Keep going! You&apos;re doing great 🌱</p>
       </div>
     </div>
   );

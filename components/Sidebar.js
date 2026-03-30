@@ -8,7 +8,7 @@ export default function Sidebar({ isExpanded = false, setIsExpanded }) {
   const pathname = usePathname();
 
   const navItems = [
-    { icon: Home, path: '/', label: 'Home' },
+    { icon: Home, path: '/dashboard', label: 'Home' },
     { icon: Sparkles, path: '/ai', label: 'AI' },
     { icon: BookOpen, path: '/library', label: 'Library' },
     { icon: Layout, path: '/study', label: 'Study' },
