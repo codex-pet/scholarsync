@@ -62,11 +62,13 @@ const features = [
 function FeatureCard({ feature, index }) {
   return (
     <div
-      className={`group relative bg-gradient-to-br ${feature.color} border ${feature.border} backdrop-blur-sm rounded-3xl p-8 hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1.5 transition-all duration-300`}
+      role="article"
+      aria-label={feature.title}
+      className={`group relative bg-gradient-to-br ${feature.color} border ${feature.border} backdrop-blur-sm rounded-3xl p-8 hover:shadow-xl hover:shadow-slate-200/60 hover:-translate-y-1.5 transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-indigo-200`}
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       {/* Icon */}
-      <div className={`w-14 h-14 ${feature.iconBg} rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform duration-300`}>
+      <div aria-hidden="true" className={`w-14 h-14 ${feature.iconBg} rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform duration-300`}>
         {feature.icon}
       </div>
 

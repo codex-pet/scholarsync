@@ -107,21 +107,21 @@ export default function PreviewSection() {
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-md">PA</div>
                 </div>
 
-                <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8">
                   {/* Left column */}
-                  <div className="col-span-8 space-y-3">
+                  <div className="col-span-1 md:col-span-8 space-y-4">
                     {/* Search bar */}
-                    <div className="bg-white border border-slate-200/60 rounded-xl px-4 py-2.5 flex items-center gap-2 text-slate-400 text-xs shadow-sm">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                      Search documents, notes, flashcards...
+                    <div className="bg-white border border-slate-200/60 rounded-xl px-4 py-2.5 flex items-center gap-2 text-slate-400 text-xs shadow-sm" role="search">
+                      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                      <span>Search documents, notes, flashcards...</span>
                     </div>
 
                     {/* Recent Docs */}
-                    <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Recent Documents</p>
-                    <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Recent Documents</p>
+                    <div className="space-y-3">
                       {recentDocs.map((doc) => (
-                        <div key={doc.title} className={`${doc.color} border border-white/60 rounded-2xl px-4 py-3 flex items-center gap-3 hover:shadow-md transition-all cursor-pointer`}>
-                          <span className="text-xl">{doc.icon}</span>
+                        <div key={doc.title} className={`${doc.color} border border-white/60 rounded-2xl px-4 py-3 flex items-center gap-3 hover:shadow-md transition-all cursor-pointer`} role="link" aria-label={`View ${doc.title}`}>
+                          <span className="text-xl" aria-hidden="true">{doc.icon}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-slate-700 truncate">{doc.title}</p>
                             <p className="text-[10px] text-slate-400 truncate">{doc.sub}</p>
@@ -133,7 +133,7 @@ export default function PreviewSection() {
                   </div>
 
                   {/* Right column */}
-                  <div className="col-span-4 space-y-3">
+                  <div className="col-span-1 md:col-span-4 space-y-4">
                     {/* Progress ring card */}
                     <div className="bg-white/80 border border-white/60 rounded-2xl p-4 flex flex-col items-center shadow-sm">
                       <p className="text-[10px] font-bold text-slate-700 self-start mb-3">Daily Goal</p>
@@ -141,16 +141,18 @@ export default function PreviewSection() {
                     </div>
 
                     {/* Task list */}
-                    <div className="bg-white/80 border border-white/60 rounded-2xl p-4 shadow-sm space-y-2">
+                    <div className="bg-white/80 border border-white/60 rounded-2xl p-4 shadow-sm space-y-3">
                       <p className="text-[10px] font-bold text-slate-700 mb-1">Tasks</p>
-                      {tasks.map((t) => (
-                        <div key={t.label} className="flex items-center gap-2">
-                          <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${t.done ? "bg-emerald-500 border-emerald-500" : "border-slate-300"}`}>
-                            {t.done && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
+                      <div className="space-y-2">
+                        {tasks.map((t) => (
+                          <div key={t.label} className="flex items-center gap-2">
+                            <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${t.done ? "bg-emerald-500 border-emerald-500" : "border-slate-300"}`} aria-hidden="true">
+                              {t.done && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
+                            </div>
+                            <span className={`text-[10px] leading-tight ${t.done ? "line-through text-slate-400" : "text-slate-600"}`}>{t.label}</span>
                           </div>
-                          <span className={`text-[10px] leading-tight ${t.done ? "line-through text-slate-400" : "text-slate-600"}`}>{t.label}</span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>

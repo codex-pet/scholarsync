@@ -6,36 +6,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design Tokens ─────────────────────────────────── */
 :root {
   --background: #FAF9F6;
 }
 
+/* ─── Base Styles ─────────────────────────────────────── */
 body {
   background-color: var(--background);
-  background-image: radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-                    radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+  background-image:
+    radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
   background-attachment: fixed;
   background-position: center;
   font-family: 'Inter', sans-serif;
   color: #2D2D2D;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Accessibility ────────────────────────────────────── */
+:focus, :focus-visible {
+  outline: none !important;
+}
+
+/* ─── Typography ──────────────────────────────────────── */
 h1, h2, h3, h4 {
   font-family: 'Quicksand', sans-serif;
   font-weight: 700;
 }
 
-/* Cozy Glassmorphism Utility */
+/* ─── Glassmorphism ───────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
 }
 
-/* iOS Fluid Glass Effect */
 .ios-glass {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 100%);
   backdrop-filter: blur(40px) saturate(200%);
@@ -44,15 +54,49 @@ h1, h2, h3, h4 {
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+/* ─── Scrollbar Utilities ─────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar        { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb  { background: #E2E8F0; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track  { background: transparent; }
 
-/* Slow pulse for hero background blobs */
+/* Hide scrollbar but keep scrollability (for chip rows, etc.) */
+.no-scrollbar               { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ─── Animations ──────────────────────────────────────── */
 @keyframes pulse-slow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.05); }
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.7; transform: scale(1.05); }
 }
 
 .animate-pulse-slow {
   animation: pulse-slow 6s ease-in-out infinite;
-}
+}
+
+/* Slide-in for mobile sidebar drawer */
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* Fade overlay */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Responsive Helpers ──────────────────────────────── */
+
+/* Ensure tap targets are comfortable on touch devices */
+@media (max-width: 1024px) {
+  button, a {
+    min-height: 36px;
+  }
+}
+
+/* Prevent content being hidden under the fixed mobile header */
+@media (max-width: 1023px) {
+  .dashboard-content-offset {
+    padding-top: 4rem; /* 64px = h-16 */
+  }
+}

@@ -73,7 +73,9 @@ export default function TestimonialsSection() {
           {testimonials.map((t, i) => (
             <div
               key={t.name}
-              className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-3xl p-8 shadow-lg shadow-slate-100/80 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col gap-5"
+              role="article"
+              aria-label={`Testimonial from ${t.name}`}
+              className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-3xl p-8 shadow-lg shadow-slate-100/80 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col gap-5 outline-none focus-visible:ring-2 focus-visible:ring-purple-200"
               style={{ transitionDelay: `${i * 60}ms` }}
             >
               {/* Tag + Stars */}
