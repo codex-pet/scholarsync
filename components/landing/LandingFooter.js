@@ -50,7 +50,7 @@ export default function LandingFooter() {
                   <li key={link}>
                     <a
                       href="#"
-                      className="text-sm text-slate-500 hover:text-indigo-600 transition-colors"
+                      className="text-sm text-slate-500 hover:text-indigo-600 transition-colors outline-none focus-visible:text-indigo-600"
                     >
                       {link}
                     </a>
@@ -62,26 +62,27 @@ export default function LandingFooter() {
         </div>
 
         {/* CTA Banner */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl p-10 flex flex-col md:flex-row items-center justify-between gap-6 mb-16 shadow-xl shadow-indigo-200/40">
-          <div className="text-center md:text-left">
-            <h3 className="text-white font-bold text-2xl mb-1">Ready to study smarter?</h3>
-            <p className="text-indigo-200 text-sm">Join 10,000+ students already using ScholarSync.</p>
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2.5rem] p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-8 mb-16 shadow-xl shadow-indigo-200/40">
+          <div className="text-center md:text-left space-y-2">
+            <h3 className="text-white font-bold text-2xl sm:text-3xl mb-1 tracking-tight">Ready to study smarter?</h3>
+            <p className="text-indigo-100/90 text-sm sm:text-base">Join 10,000+ students already using ScholarSync.</p>
           </div>
           <Link
-            href="/dashboard"
-            className="shrink-0 bg-white text-indigo-600 font-bold px-8 py-3.5 rounded-2xl hover:bg-indigo-50 hover:scale-105 transition-all shadow-md text-sm"
+            href="/login"
+            aria-label="Get Started Free with ScholarSync"
+            className="w-full sm:w-auto shrink-0 bg-white text-indigo-600 font-bold px-10 py-4 rounded-2xl hover:bg-indigo-50 hover:scale-105 transition-all shadow-lg text-base text-center outline-none focus-visible:ring-4 focus-visible:ring-indigo-300"
           >
             Get Started Free →
           </Link>
         </div>
 
         {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-400 border-t border-slate-100 pt-8">
           <p>© {new Date().getFullYear()} ScholarSync. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-slate-600 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-slate-600 transition-colors">Terms</a>
-            <a href="#" className="hover:text-slate-600 transition-colors">Cookies</a>
+            <a href="#" className="hover:text-indigo-600 transition-colors outline-none focus-visible:text-indigo-600">Privacy</a>
+            <a href="#" className="hover:text-slate-600 transition-colors outline-none focus-visible:text-indigo-600">Terms</a>
+            <a href="#" className="hover:text-slate-600 transition-colors outline-none focus-visible:text-indigo-600">Cookies</a>
           </div>
         </div>
       </div>
