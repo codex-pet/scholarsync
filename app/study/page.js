@@ -85,7 +85,6 @@ export default function StudyCenter() {
       return a.name.localeCompare(b.name);
     });
 
-
   const generateStudySet = async (file) => {
     setIsGenerating(file.id);
     try {
@@ -115,7 +114,6 @@ export default function StudyCenter() {
       const result = await model.generateContent(parts);
       let responseText = result.response.text();
       
-      // More robust JSON extraction
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error("Could not find a valid JSON object in the AI response.");
@@ -199,7 +197,6 @@ export default function StudyCenter() {
     const existingSet = studySets[fileId];
     if (!existingSet) return;
     
-    // Reset back to the first 10 flashcards and 5 quizzes
     const newSet = {
       ...existingSet,
       flashcards: existingSet.flashcards.slice(0, 10),
@@ -370,7 +367,6 @@ export default function StudyCenter() {
     const quiz = activeSession.data.quiz;
     const currentQ = quiz[quizIndex];
 
-    // Clean up AI formatting (e.g., " A) Answer" -> "Answer")
     const normalizedOptions = currentQ.options.map(opt => {
       return {
         original: opt,
@@ -430,7 +426,7 @@ export default function StudyCenter() {
             <h2 className="text-3xl font-black text-[#2B3674] mb-1 text-center">Quiz Complete!</h2>
             <p className="text-slate-500 text-center mb-6">{score} / {quiz.length} correct &bull; <span className={passed ? 'text-green-600 font-bold' : 'text-orange-500 font-bold'}>{pct}%</span></p>
             <div className="w-full bg-slate-200 h-3 rounded-full mb-6 overflow-hidden">
-              <div className={`h-full ${passed ? 'bg-green-500' : 'bg-orange-500'} transition-all duration-1000 rounded-full`} style={{ width: `${pct}%` }} />
+              <div className={`h-full ${passed ? 'bg-green-50' : 'bg-orange-50'} transition-all duration-1000 rounded-full`} style={{ width: `${pct}%` }} />
             </div>
             {wrongAnswers.length > 0 && (
               <>
@@ -537,9 +533,6 @@ export default function StudyCenter() {
     );
   }
 
-  // ----------------------------------------------------
-  // OVERVIEW RENDERER
-  // ----------------------------------------------------
   return (
     <div className="p-6 lg:p-10 space-y-8 max-w-[1400px] mx-auto min-h-screen flex flex-col">
 
@@ -639,7 +632,6 @@ export default function StudyCenter() {
               const studySet = studySets[file.id];
               const isProcessing = isGenerating === file.id;
               
-              // Expiration check (matches Library page 48-hour logic)
               const timeLeftMs = (48 * 3600 * 1000) - (Date.now() - (file.createdAt || Date.now()));
               const isExpired = timeLeftMs <= 0;
 
@@ -648,7 +640,7 @@ export default function StudyCenter() {
               const lastStudied = studySet?.lastStudied ? new Date(studySet.lastStudied).toLocaleDateString([], { month: 'short', day: 'numeric' }) : null;
 
               return (
-                <div key={file.id} className="bg-white/50 backdrop-blur-xl border border-white/80 shadow-sm hover:shadow-lg transition-all duration-300 rounded-[28px] p-6 flex flex-col gap-4 group hover:-translate-y-0.5">
+                <div key={file.id} className="bg-white/50 backdrop-blur-xl border border-white/80 shadow-sm hover:shadow-lg transition-all duration-300 rounded-[28px] p-6 flex flex-col gap-4 group hover:-translate-y-0.5 animate-in fade-in duration-300">
 
                   {/* Card Header */}
                   <div className="flex items-start gap-3">
@@ -672,7 +664,6 @@ export default function StudyCenter() {
                           </div>
                         </div>
                       )}
-                      {/* Delete button */}
                       {studySet && (
                         confirmDeleteId === file.id ? (
                           <div className="flex items-center gap-1 mt-1">

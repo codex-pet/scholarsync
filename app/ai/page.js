@@ -1,7 +1,13 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { UploadCloud, FileText, CheckCircle2, Circle, Send, Sparkles, FileImage, ShieldCheck, Globe, LibraryBig, Lightbulb, Wand2, Loader2, Square, Edit3, Copy, Check, X, ExternalLink, ZoomIn, ZoomOut, Trash2, AlertTriangle, BookOpen, RotateCcw, MessageSquarePlus } from 'lucide-react';
+import {
+  UploadCloud, FileText, CheckCircle2, Circle, Send, Sparkles,
+  FileImage, ShieldCheck, Globe, LibraryBig, Lightbulb, Wand2,
+  Loader2, Square, Edit3, Copy, Check, X, ExternalLink,
+  ZoomIn, ZoomOut, Trash2, AlertTriangle, BookOpen, RotateCcw,
+  MessageSquarePlus, PanelLeftClose, PanelLeftOpen
+} from 'lucide-react';
 import { saveFileLocally, loadFilesLocally, saveChatSession, loadChatSession, deleteChatSession } from '../../lib/indexeddb';
 import Link from 'next/link';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -25,6 +31,8 @@ const fileSizeMB = (s) => parseFloat(s) || 0;
 export default function AIWorkspace() {
   const [isDragging, setIsDragging] = useState(false);
   const [isRagMode, setIsRagMode] = useState(true);
+  const [leftPaneOpen, setLeftPaneOpen] = useState(false); // mobile collapsible
+
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -204,13 +212,10 @@ export default function AIWorkspace() {
   };
 
   // Hide a file for this session only (sessionStorage). File stays in Library.
-  // On next tab open / page reload the file will reappear.
   const removeFileFromSession = (e, id) => {
     e.stopPropagation();
-    // Update React state immediately
     setFiles(prev => prev.filter(f => f.id !== id));
     if (previewFile?.id === id) closePreview();
-    // Persist exclusion for the lifetime of this browser tab
     try {
       const excluded = JSON.parse(sessionStorage.getItem('ss_ai_excluded_files') || '[]');
       if (!excluded.includes(id)) {
@@ -292,7 +297,7 @@ export default function AIWorkspace() {
     if (e.target.files?.length > 0) processFiles(Array.from(e.target.files));
   };
 
-  const selectedCount = files.filter(f => f.selected).length;
+  const selectedCount   = files.filter(f => f.selected).length;
   const isInputDisabled = isRagMode && selectedCount === 0;
 
   const handleStopGeneration = () => {
@@ -446,30 +451,48 @@ export default function AIWorkspace() {
     }
   };
 
-  const quickPrompts =[
+  const quickPrompts = [
     "Summarize key concepts",
     "Generate 5 flashcards",
     "Explain this simply",
-    "Create a practice quiz"
+    "Create a practice quiz",
   ];
 
   return (
-    <div className="p-6 lg:p-8 h-screen flex flex-col gap-6 max-w-[1600px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 h-[calc(100vh-4rem)] lg:h-screen flex flex-col gap-4 sm:gap-6 max-w-[1600px] mx-auto">
       
-      <header className="flex flex-col px-2">
-        <h1 className="text-3xl lg:text-4xl text-[#2B3674] font-bold tracking-tight flex items-center gap-2">
-          Study Buddy <Sparkles className="text-indigo-400" size={28} />
-        </h1>
-        <p className="text-slate-400 font-medium mt-1">Your personalized, AI-powered academic tutor</p>
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between px-1 shrink-0">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl text-[#2B3674] font-bold tracking-tight flex items-center gap-2">
+            Study Buddy <Sparkles className="text-indigo-400 shrink-0" size={24} />
+          </h1>
+          <p className="text-slate-400 font-medium mt-1 text-sm sm:text-base">Your personalized, AI-powered academic tutor</p>
+        </div>
+
+        {/* Mobile: toggle Knowledge Base panel */}
+        <button
+          className="lg:hidden p-2.5 rounded-xl bg-white/60 border border-white/60 text-slate-500 hover:text-indigo-600 transition-colors"
+          onClick={() => setLeftPaneOpen(p => !p)}
+          aria-label={leftPaneOpen ? "Hide knowledge base" : "Show knowledge base"}
+        >
+          {leftPaneOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+        </button>
       </header>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-0 pb-4">
+      {/* ── Main Layout ── */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 min-h-0 pb-4">
         
         {/* LEFT PANE: Knowledge Base */}
-        <div className={`${previewFile ? 'hidden' : 'col-span-12 lg:col-span-4'} bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.06)] rounded-[32px] flex flex-col overflow-hidden h-full transition-all duration-300`}>
+        <div className={`
+          ${previewFile ? 'hidden' : 'col-span-12 lg:col-span-4'} 
+          bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.06)] rounded-[32px] flex flex-col overflow-hidden h-full transition-all duration-300
+          ${leftPaneOpen ? 'max-h-[50vh]' : 'max-h-0 overflow-hidden'}
+          lg:max-h-full lg:overflow-visible
+        `}>
           <div className="px-6 py-4 flex items-center gap-3 border-b border-white/40">
-            <LibraryBig className="text-indigo-500" size={22} />
-            <h2 className="font-bold text-[#2B3674] text-lg">Knowledge Base</h2>
+            <LibraryBig className="text-indigo-500 shrink-0" size={22} />
+            <h2 className="font-bold text-[#2B3674] text-base sm:text-lg">Knowledge Base</h2>
             {files.length > 0 && (
               <span className="ml-auto text-[10px] font-black text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">{files.length} file{files.length !== 1 ? 's' : ''}</span>
             )}
@@ -570,13 +593,13 @@ export default function AIWorkspace() {
 
         {/* MIDDLE PANE: Document Preview */}
         {previewFile && (
-          <div className="col-span-12 lg:col-span-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.06)] rounded-[32px] flex flex-col h-full overflow-hidden transition-all duration-300">
-            <div className="px-6 py-4 border-b border-white/40 flex justify-between items-center bg-white/50">
+          <div className="col-span-12 lg:col-span-5 bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.06)] rounded-[32px] flex flex-col h-full overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-left duration-500">
+            <div className="px-6 py-4 border-b border-white/40 flex justify-between items-center bg-white/50 shrink-0">
               <div className="flex items-center gap-3 overflow-hidden">
                 <FileText size={20} className="text-indigo-500 shrink-0" />
                 <h3 className="font-bold text-[#2B3674] text-sm truncate">{previewFile.name}</h3>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <button onClick={() => setPdfScale(s => Math.max(0.5, s - 0.2))} className="p-1.5 bg-white hover:bg-slate-50 text-slate-500 rounded-lg shadow-sm transition-colors" title="Zoom Out">
                   <ZoomOut size={16} />
                 </button>
@@ -654,7 +677,7 @@ export default function AIWorkspace() {
         {/* RIGHT PANE: Chat Workspace */}
         <div className={`${previewFile ? 'col-span-12 lg:col-span-7' : 'col-span-12 lg:col-span-8'} bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.06)] rounded-[32px] flex flex-col h-full relative overflow-hidden transition-all duration-300`}>
           
-          <div className="px-6 py-4 flex items-center justify-between z-10 border-b border-slate-100">
+          <div className="px-6 py-4 flex items-center justify-between z-10 border-b border-slate-100 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]" />
               <h2 className="font-bold text-[#2B3674] text-lg">Study Assistant</h2>
@@ -683,22 +706,22 @@ export default function AIWorkspace() {
           </div>
 
           {isRagMode && (
-            <div className="bg-white/20 px-8 py-3 flex items-center gap-2 text-xs text-slate-500 font-medium border-b border-white/30">
+            <div className="bg-white/20 px-8 py-3 flex items-center gap-2 text-xs text-slate-500 font-medium border-b border-white/30 shrink-0">
               <ShieldCheck size={16} className="text-green-500 shrink-0" />
               <span><strong className="text-green-700">RAG Mode is ON</strong> — The AI reads <em>only</em> from your selected files above. Answers are locked to your study materials for greater accuracy.</span>
             </div>
           )}
           {!isRagMode && (
-            <div className="bg-white/20 px-8 py-3 flex items-center gap-2 text-xs text-slate-500 font-medium border-b border-white/30">
+            <div className="bg-white/20 px-8 py-3 flex items-center gap-2 text-xs text-slate-500 font-medium border-b border-white/30 shrink-0">
               <Globe size={16} className="text-slate-400 shrink-0" />
               <span><strong className="text-slate-600">General Mode is ON</strong> — The AI uses its full knowledge base. Answers are not restricted to your uploaded files.</span>
             </div>
           )}
           
-          <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col">
+          <div className="flex-1 p-8 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
             
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full w-full max-w-2xl mx-auto">
+              <div className="flex flex-col items-center justify-center h-full w-full max-w-2xl mx-auto py-8">
                   {isRagMode ? (
                     <div className="w-full">
                       {selectedCount > 0 ? (
@@ -733,7 +756,7 @@ export default function AIWorkspace() {
             ) : (
               <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto pb-4">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
+                  <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group animate-in fade-in duration-300`}>
                     {msg.role === 'user' && (
                       <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity mr-2">
                         <button onClick={() => handleEditMessage(idx)} className="p-2 bg-white rounded-full text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 shadow-sm transition-all" title="Edit Message">
@@ -800,26 +823,26 @@ export default function AIWorkspace() {
           </div>
 
           {/* Bottom Input Section */}
-          <div className="px-6 pb-6 pt-3 flex flex-col gap-3">
+          <div className="px-6 pb-6 pt-3 flex flex-col gap-3 shrink-0">
             {/* Quick Prompts — always accessible */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
               <button
                 onClick={() => setShowQuickPrompts(p => !p)}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-indigo-500 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-indigo-200 bg-white/60 transition-all"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-indigo-500 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-indigo-200 bg-white/60 transition-all shrink-0"
                 title="Quick prompts"
               >
                 <MessageSquarePlus size={13} />
                 Prompts {showQuickPrompts ? '▲' : '▼'}
               </button>
               {showQuickPrompts && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2 overflow-x-auto no-scrollbar shrink-0">
                   {quickPrompts.map((prompt, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSendMessage(prompt)}
                       disabled={isInputDisabled}
                       title={isInputDisabled ? 'Select a file first to use RAG prompts' : ''}
-                      className="text-[12px] font-bold bg-white px-4 py-1.5 rounded-full text-[#5B61F4] border border-[#D1D1FF] shadow-sm hover:bg-[#F3F4FF] transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      className="text-[12px] font-bold bg-white px-4 py-1.5 rounded-full text-[#5B61F4] border border-[#D1D1FF] shadow-sm hover:bg-[#F3F4FF] transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
                     >
                       {prompt}
                     </button>
@@ -856,9 +879,7 @@ export default function AIWorkspace() {
               )}
             </form>
           </div>
-
         </div>
-
       </div>
     </div>
   );

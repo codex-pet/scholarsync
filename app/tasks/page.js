@@ -121,7 +121,6 @@ export default function Tasks() {
     } else if (timeLeft === 0 && isTimerRunning) {
       setIsTimerRunning(false);
       
-      // Play a simple notification chime using Web Audio API
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -129,7 +128,6 @@ export default function Tasks() {
         osc.connect(gainNode);
         gainNode.connect(ctx.destination);
         
-        // Gentle double-chime
         osc.type = 'sine';
         osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
         osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.2); // C6
@@ -297,7 +295,7 @@ export default function Tasks() {
   const filteredTasks = tasks.filter(t => {
     if (activeTab === "Active") return !t.completed;
     if (activeTab === "Overdue") return !t.completed && getDaysUntil(t.due) < 0;
-    return t.completed; // for Completed
+    return t.completed;
   });
   
   const sortedTasks = filteredTasks.sort((a, b) => {
@@ -325,7 +323,7 @@ export default function Tasks() {
   }
 
   return (
-    <div className="p-8 lg:p-12 max-w-[1400px] mx-auto space-y-10">
+    <div className="p-8 lg:p-12 max-w-[1400px] mx-auto space-y-10 animate-in fade-in duration-300">
       
       {/* 1. Header Section */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 relative z-50">
@@ -651,7 +649,6 @@ export default function Tasks() {
         {/* 3. Analytics & Productivity (Right Side) */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
           
-
           {/* Task Insights Card */}
           <div className="bg-white/50 backdrop-blur-xl p-8 rounded-[3rem] border border-white/80 shadow-sm space-y-8 relative overflow-hidden group">
             <div className="absolute top-[-30%] right-[-10%] w-[200px] h-[200px] bg-indigo-400/20 rounded-full blur-[60px] pointer-events-none group-hover:scale-110 transition-transform duration-700" />
@@ -663,7 +660,7 @@ export default function Tasks() {
                  <div className="flex justify-between items-end">
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Completion Rate</span>
                     <span className="text-sm font-black text-indigo-600">{progressPercent}%</span>
-                 </div>
+                  </div>
                  <div className="w-full bg-white h-3 rounded-full overflow-hidden border border-slate-100 shadow-inner">
                     <div 
                       className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_12px_rgba(129,140,248,0.5)]" 
@@ -731,8 +728,6 @@ export default function Tasks() {
               </button>
             </div>
           </div>
-
-
 
         </div>
       </div>

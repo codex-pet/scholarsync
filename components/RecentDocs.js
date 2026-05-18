@@ -43,7 +43,7 @@ export default function RecentDocs() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-300">
       {files.map((file, idx) => (
         <Link
           href="/library"

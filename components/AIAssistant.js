@@ -22,7 +22,7 @@ export default function AIAssistant() {
   return (
     <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 backdrop-blur-md p-6 rounded-[2.5rem] space-y-4 border border-white/60 shadow-sm hover:shadow-xl hover:shadow-indigo-200/40 transition-all duration-300 relative overflow-hidden group">
       <div className="absolute top-[-20%] right-[-10%] w-[150px] h-[150px] bg-indigo-400/20 rounded-full blur-[40px] pointer-events-none group-hover:scale-125 transition-transform duration-700" />
-      <div className="relative z-10">
+      <div className="relative z-10 animate-in fade-in duration-300">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2 text-indigo-700 font-bold text-base">
             <div className="p-2 bg-white/60 backdrop-blur-sm rounded-xl shadow-sm border border-white/50">

@@ -48,9 +48,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
-
-      {/* ── HEADER ── */}
+    <div className="p-4 sm:p-6 lg:p-10 xl:p-12 space-y-6 sm:space-y-8 lg:space-y-10 max-w-7xl mx-auto">
       <Header />
 
       {/* ── STATS CARDS ── */}
@@ -234,7 +232,6 @@ export default function Dashboard() {
             </div>
             <RecentDocs />
           </section>
-
         </div>
 
         {/* RIGHT COLUMN (5/12) */}
@@ -273,7 +270,7 @@ export default function Dashboard() {
               {[
                 { label: "My Library", sub: `${files.length} files uploaded`, href: "/library", Icon: LibraryBig, accent: "text-indigo-500", bg: "bg-indigo-50/60 border-indigo-100/80" },
                 { label: "Study Center", sub: `${studySets.length} study sets ready`, href: "/study", Icon: BrainCircuit, accent: "text-purple-500", bg: "bg-purple-50/60 border-purple-100/80" },
-                { label: "Task List", sub: "Manage your to-do's", href: "/tasks", Icon: TrendingUp, accent: "text-emerald-500", bg: "bg-emerald-50/60 border-emerald-100/80" },
+                { label: "Task List", sub: "Manage your to-do's", href: "/tasks", Icon: CheckSquare, accent: "text-emerald-500", bg: "bg-emerald-50/60 border-emerald-100/80" },
               ].map(({ label, sub, href, Icon, accent, bg }) => (
                 <Link key={label} href={href}
                   className={`flex items-center gap-4 ${bg} backdrop-blur-md border rounded-2xl px-5 py-4 hover:shadow-md hover:-translate-y-0.5 transition-all group`}
@@ -290,7 +287,6 @@ export default function Dashboard() {
               ))}
             </div>
           </section>
-
         </div>
       </div>
     </div>

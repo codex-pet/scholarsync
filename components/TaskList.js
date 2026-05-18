@@ -3,14 +3,14 @@ import Link from "next/link";
 
 export default function TaskList() {
   const tasks = [
-    { title: "Review Chapter 3", completed: true },
+    { title: "Review Chapter 3",       completed: true  },
     { title: "Complete Exercise Set A", completed: false },
   ];
 
   return (
     <div className="bg-white/40 backdrop-blur-md p-8 rounded-[2.5rem] shadow-sm border border-white/60 hover:shadow-xl hover:shadow-indigo-100/30 transition-all duration-300 relative overflow-hidden group">
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="relative z-10">
+      <div className="relative z-10 animate-in fade-in duration-300">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-bold text-slate-800 text-lg">Today&apos;s Tasks</h3>
           <span className="text-xs font-bold text-green-600 bg-green-100/80 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-green-200/50 shadow-sm">1/3</span>

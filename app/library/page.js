@@ -18,8 +18,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 // CONSTANTS & INITIAL DATA
 // ==========================================
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const VALID_EXTENSIONS =['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'webp'];
-const FILTERS =["All Files", "AI Processed", "Needs Sync"];
+const VALID_EXTENSIONS = ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'webp'];
+const FILTERS = ["All Files", "AI Processed", "Needs Sync"];
 
 // ==========================================
 // MAIN PAGE COMPONENT
@@ -64,7 +64,6 @@ export default function LibraryPage() {
           
           let actualPages = file.pages;
           if (file.type === 'pdf' && file.base64 && (!file.pages || file.pages > 15)) {
-            // Note: Since previous code generated random pages 1-20, let's verify/re-parse pages if it doesn't match the PDF
             try {
               const byteCharacters = atob(file.base64);
               const byteNumbers = new Array(byteCharacters.length);
@@ -195,16 +194,13 @@ export default function LibraryPage() {
   };
 
   // Drag & Drop
-  const handleDragOver = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); },[]);
-  const handleDragLeave = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); },[]);
+  const handleDragOver = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }, []);
+  const handleDragLeave = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }, []);
   const handleDrop = useCallback((e) => {
     e.preventDefault(); e.stopPropagation(); setIsDragging(false);
     if (e.dataTransfer.files?.length > 0) validateAndAddFiles(e.dataTransfer.files);
-  },[]);
+  }, []);
 
-  // ==========================================
-  // RENDER MAIN LAYOUT
-  // ==========================================
   return (
     <div className="p-6 lg:p-10 min-h-screen bg-transparent max-w-[1600px] mx-auto flex flex-col gap-8 relative">
       
@@ -344,7 +340,7 @@ export default function LibraryPage() {
 
       {/* File Viewer Modal */}
       {fileToView && (
-        <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-lg flex flex-col transition-all duration-300">
+        <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-lg flex flex-col transition-all duration-300 animate-in fade-in duration-300">
           <div className="flex justify-between items-center p-4 bg-slate-900/50 text-white border-b border-white/10 shrink-0 backdrop-blur-xl">
             <h3 className="font-bold text-lg flex items-center gap-2">
               <FileText size={20} className="text-indigo-400" /> {fileToView.name}
