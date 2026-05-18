@@ -1,9 +1,14 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import Link from 'next/link';
 
 export default function Profile() {
     const [isOpen, setIsOpen] = useState(false);
+    const [userName, setUserName] = useState('Loading...');
+    const [userPhoto, setUserPhoto] = useState(null);
     const menuRef = useRef(null);
     const router = useRouter();
 
@@ -20,25 +25,79 @@ export default function Profile() {
         };
     }, []);
 
-    const handleLogout = () => {
-        // You can clear authentication tokens here if needed
-        router.push('/');
+    // Read user info from auth and localStorage
+    function updateProfile() {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Display name
+        let name = user.displayName;
+        if (!name) {
+            const prefix = user.email?.split('@')[0] || '';
+            name = prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : 'User';
+        }
+        setUserName(name);
+
+        // Avatar: prefer localStorage (set by Settings page), fallback to Firebase photoURL
+        const localAvatar = localStorage.getItem(`avatar_${user.uid}`);
+        if (localAvatar === 'removed') {
+            setUserPhoto(null);
+        } else {
+            setUserPhoto(localAvatar || user.photoURL || null);
+        }
+    }
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                updateProfile();
+            } else {
+                setUserName('Guest');
+                setUserPhoto(null);
+            }
+        });
+
+        // Listen for profile updates dispatched from Settings page
+        window.addEventListener('profileUpdated', updateProfile);
+
+        return () => {
+            unsubscribe();
+            window.removeEventListener('profileUpdated', updateProfile);
+        };
+    }, []);
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            router.push('/');
+        } catch (error) {
+            console.error("Error signing out: ", error);
+        }
     };
+
+    const initials = userName !== 'Loading...' && userName !== 'Guest'
+        ? userName.charAt(0).toUpperCase()
+        : '?';
 
     return (
         <div ref={menuRef} className="fixed bottom-3 left-6 z-[60]">
 
-            {/* Pop-up Menu (Upper Portion) */}
+            {/* Pop-up Menu */}
             {isOpen && (
-                <div className="absolute bottom-full left-0 mb-3 w-40 p-1.5 rounded-2xl transition-all duration-300 ease-in-out
-                    bg-white/[0.8] backdrop-blur-2xl backdrop-saturate-[1.8]
+                <div className="absolute bottom-full left-0 mb-3 w-48 p-1.5 rounded-2xl transition-all duration-300 ease-in-out
+                    bg-white/[0.85] backdrop-blur-2xl backdrop-saturate-[1.8]
                     border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] z-50"
                 >
+                    <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                        <p className="text-xs font-bold text-slate-800 truncate">{userName}</p>
+                        <p className="text-[10px] text-slate-400 font-medium truncate">{auth.currentUser?.email}</p>
+                    </div>
+
                     <button
                         onClick={handleLogout}
                         className="w-full flex items-center justify-start gap-2 px-3 py-2 text-sm font-semibold text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                             <polyline points="16 17 21 12 16 7"></polyline>
                             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -53,7 +112,6 @@ export default function Profile() {
                 onClick={() => setIsOpen(!isOpen)}
                 suppressHydrationWarning={true}
                 className="group flex items-center gap-0 hover:gap-3 cursor-pointer p-1.5 rounded-full transition-all duration-500 ease-in-out
-                /* MATCHING THE SIDEBAR GLASS */
                 bg-white/[0.15] 
                 bg-gradient-to-r from-white/20 via-transparent to-white/10
                 backdrop-blur-2xl backdrop-saturate-[1.8]
@@ -62,19 +120,18 @@ export default function Profile() {
                 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.2)]
                 hover:bg-white/30"
             >
-                {/* Avatar Container */}
-                <div className="w-11 h-11 rounded-full border-2 border-white/60 overflow-hidden shadow-sm flex-shrink-0 transition-transform duration-300 group-hover:scale-105 relative z-10">
-                    <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jade"
-                        alt="User"
-                        className="w-full h-full object-cover"
-                    />
+                {/* Avatar */}
+                <div className="w-11 h-11 rounded-full border-2 border-white/60 overflow-hidden shadow-sm flex-shrink-0 transition-transform duration-300 group-hover:scale-105 relative z-10 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-black text-lg">
+                    {userPhoto
+                        ? <img src={userPhoto} alt="User" className="w-full h-full object-cover" />
+                        : <span>{initials}</span>
+                    }
                 </div>
 
                 {/* Text Area - Slides out on Hover */}
                 <div className="flex flex-col max-w-0 overflow-hidden opacity-0 group-hover:max-w-[150px] group-hover:opacity-100 group-hover:pr-4 transition-all duration-500 ease-in-out">
                     <span className="text-sm font-bold text-slate-800 whitespace-nowrap">
-                        Jade Smith
+                        {userName}
                     </span>
                     <span className="text-[10px] font-medium text-indigo-600/80 uppercase tracking-wider whitespace-nowrap">
                         Pro Plan
