@@ -5,10 +5,13 @@ import RecentDocs from "@/components/RecentDocs";
 import ProgressRing from "@/components/ProgressRing";
 import {
   ArrowRight, BookOpen, BrainCircuit, Sparkles, ChevronRight,
-  LibraryBig, FileText, Target, Zap, TrendingUp, BookMarked
+  LibraryBig, FileText, Target, Zap, TrendingUp, BookMarked, CheckSquare
 } from "lucide-react";
 import Link from "next/link";
 import { loadFilesLocally, loadStudySetsLocally } from "../../lib/indexeddb";
+import SearchArea from "@/components/SearchArea";
+import TaskList from "@/components/TaskList";
+import AIAssistant from "@/components/AIAssistant";
 
 export default function Dashboard() {
   const [files, setFiles] = useState([]);

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Sun, Sunset, Moon, Lightbulb } from "lucide-react";
+import { Sun, Sunset, Moon, Lightbulb, CloudSnow } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
