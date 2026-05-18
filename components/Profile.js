@@ -27,8 +27,54 @@ export default function Profile({ isMobile = false }) {
         };
     }, [isOpen]);
 
-    const handleLogout = () => {
-        router.push('/');
+    // Read user info from auth and localStorage
+    function updateProfile() {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Display name
+        let name = user.displayName;
+        if (!name) {
+            const prefix = user.email?.split('@')[0] || '';
+            name = prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : 'User';
+        }
+        setUserName(name);
+
+        // Avatar: prefer localStorage (set by Settings page), fallback to Firebase photoURL
+        const localAvatar = localStorage.getItem(`avatar_${user.uid}`);
+        if (localAvatar === 'removed') {
+            setUserPhoto(null);
+        } else {
+            setUserPhoto(localAvatar || user.photoURL || null);
+        }
+    }
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                updateProfile();
+            } else {
+                setUserName('Guest');
+                setUserPhoto(null);
+            }
+        });
+
+        // Listen for profile updates dispatched from Settings page
+        window.addEventListener('profileUpdated', updateProfile);
+
+        return () => {
+            unsubscribe();
+            window.removeEventListener('profileUpdated', updateProfile);
+        };
+    }, []);
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            router.push('/');
+        } catch (error) {
+            console.error("Error signing out: ", error);
+        }
     };
 
     const initials = userName !== 'Loading...' && userName !== 'Guest'
@@ -78,22 +124,22 @@ export default function Profile({ isMobile = false }) {
                 aria-expanded={isOpen}
                 aria-label="User Profile"
                 onClick={() => setIsOpen(!isOpen)}
+                suppressHydrationWarning={true}
                 className={`group flex items-center gap-0 hover:gap-3 cursor-pointer p-1.5 rounded-full transition-all duration-500 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-indigo-200
                 bg-white/${isMobile ? '40' : '0.15'} 
                 ${!isMobile ? 'bg-gradient-to-r from-white/20 via-transparent to-white/10' : ''}
                 backdrop-blur-2xl backdrop-saturate-[1.8]
                 border border-white/40
-                shadow-[0_8px_32px_0_rgba(31,38,135,0.1)]
-                hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.2)]
+                shadow-[0_8px_32px_0_rgba(31,38,135,0.15)]
+                hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.25)]
                 hover:bg-white/30`}
             >
-                {/* Avatar Container */}
-                <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-full border-2 border-white/60 overflow-hidden shadow-sm flex-shrink-0 transition-transform duration-300 group-hover:scale-105 relative z-10">
-                    <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jade"
-                        alt="User Profile Avatar"
-                        className="w-full h-full object-cover"
-                    />
+                {/* Avatar */}
+                <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-full border-2 border-white/60 overflow-hidden shadow-sm flex-shrink-0 transition-transform duration-300 group-hover:scale-105 relative z-10 bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-black text-sm lg:text-lg">
+                    {userPhoto
+                        ? <img src={userPhoto} alt="User Profile Avatar" className="w-full h-full object-cover" />
+                        : <span>{initials}</span>
+                    }
                 </div>
 
                 {/* Text Area - Slides out on Hover */}

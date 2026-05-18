@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Sun, Sunset, Moon, Lightbulb } from "lucide-react";
+import { Sun, Sunset, Moon, Lightbulb, CloudSnow } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -65,17 +65,16 @@ export default function Header() {
   return (
     <div className="flex justify-between items-start gap-4">
       <div className="flex-1 min-w-0">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl text-slate-800 mb-1 leading-tight">
-          Good evening, Learner
-        </h1>
-        <p className="text-slate-400 font-medium text-sm sm:text-base">
-          Ready to sync and grow today?
-        </p>
-        <div className="mt-4 sm:mt-6 flex items-start gap-3 bg-white/40 border border-white/60 px-4 sm:px-5 py-2.5 rounded-full w-fit shadow-sm max-w-full">
-          <span className="text-base sm:text-lg shrink-0">💡</span>
-          <p className="text-xs text-slate-500 font-medium italic leading-relaxed">
-            Pro tip: Break your learning into 25-minute focus sessions for maximum retention.
-          </p>
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <Icon className={`${color} shrink-0`} size={28} />
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-800 leading-tight">
+            {text}, {userName}!
+          </h1>
+        </div>
+        <p className="text-slate-400 font-medium ml-1 text-sm sm:text-base">{date}</p>
+        <div className="mt-4 sm:mt-6 flex items-center gap-3 bg-white/40 border border-white/60 px-4 sm:px-5 py-2.5 rounded-full w-fit shadow-sm max-w-full">
+          <Lightbulb size={16} className="text-amber-400 shrink-0" />
+          <p className="text-xs text-slate-500 font-medium italic leading-relaxed">{tip}</p>
         </div>
       </div>
 

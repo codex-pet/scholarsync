@@ -48,26 +48,18 @@ export default function Sidebar({
         }
       `}
     >
-      {/* ── Logo / Close row ── */}
-      <div className={`
-        mb-8 flex items-center shrink-0 transition-all duration-300
-        ${expanded ? 'w-full px-2 gap-3 justify-between' : 'w-16 h-16 justify-center'}
-      `}>
+      {/* Logo Section */}
+      <div className={`mb-8 flex items-center shrink-0 transition-all duration-500 ${expanded ? 'w-full px-2 gap-3 justify-between' : 'w-16 h-16 justify-center'}`}>
         <div className="flex items-center gap-3">
           <img
             src="/scholarsync-logo.png"
-            alt="ScholarSync"
+            alt="ScholarSync Logo"
             className="w-10 h-10 object-contain shrink-0 drop-shadow-sm"
           />
-          <span className={`
-            font-bold text-slate-800 tracking-tight transition-all duration-300 overflow-hidden whitespace-nowrap
-            ${expanded ? 'opacity-100 text-sm' : 'opacity-0 w-0'}
-          `}>
+          <span className={`font-bold text-slate-800 tracking-tight whitespace-nowrap overflow-hidden transition-all duration-500 ${expanded ? 'max-w-[150px] opacity-100 translate-x-1' : 'max-w-0 opacity-0 -translate-x-2'}`}>
             ScholarSync
           </span>
         </div>
-
-        {/* Close button — only shown inside the mobile drawer */}
         {isMobileDrawer && (
           <button
             onClick={onClose}
@@ -79,13 +71,10 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ── Navigation ── */}
+      {/* Navigation */}
       <nav
         aria-label="Main Navigation"
-        className={`
-          flex flex-col gap-2 flex-1 w-full overflow-y-auto overflow-x-hidden pr-1 custom-scrollbar
-          ${expanded ? 'items-stretch' : 'items-center'}
-        `}
+        className={`flex flex-col gap-3 flex-1 w-full overflow-y-auto overflow-x-hidden scrollbar-hide pr-1 ${expanded ? 'items-stretch' : 'items-center'}`}
       >
         {navItems.map((item) => {
           const isActive = pathname === item.path;
@@ -97,59 +86,54 @@ export default function Sidebar({
               aria-current={isActive ? 'page' : undefined}
               className="group relative w-full flex justify-center shrink-0 outline-none"
             >
-              <div className={`
-                flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 w-full
-                group-focus-visible:ring-2 group-focus-visible:ring-indigo-200
-                ${isActive
-                  ? 'bg-indigo-50/80 shadow-sm text-indigo-600 border border-indigo-100/60'
-                  : 'text-slate-500 hover:bg-white/60 hover:text-indigo-500'
-                }
-                ${!expanded ? 'justify-center w-12 h-12' : 'px-4'}
-              `}>
+              <div
+                className={`
+                  flex items-center p-3 rounded-2xl transition-all duration-500 w-full overflow-hidden
+                  group-focus-visible:ring-2 group-focus-visible:ring-indigo-200
+                  ${isActive
+                    ? 'bg-indigo-50/80 shadow-sm text-indigo-600 border border-indigo-100/60'
+                    : 'text-slate-500 hover:bg-white/60 hover:text-indigo-500'
+                  } 
+                  ${expanded ? 'px-4 justify-start gap-4' : 'justify-center w-12 h-12 gap-0'}
+                `}
+              >
                 <item.icon size={20} className="shrink-0" />
-                {expanded && (
-                  <span className="font-semibold text-sm whitespace-nowrap">
-                    {item.label}
-                  </span>
-                )}
+                <span className={`font-semibold text-xs whitespace-nowrap overflow-hidden transition-all duration-500 ${expanded ? 'max-w-[100px] opacity-100' : 'max-w-0 opacity-0'}`}>
+                  {item.label}
+                </span>
               </div>
             </Link>
           );
         })}
       </nav>
 
-      {/* ── Footer ── */}
-      <div className={`
-        mt-4 border-t border-slate-200/50 pt-4 flex flex-col gap-3 w-full shrink-0
-        ${expanded ? 'items-start' : 'items-center'}
-      `}>
-        <button
+      {/* Footer */}
+      <div className={`mt-4 border-t border-slate-200/50 pt-4 flex flex-col gap-3 w-full shrink-0 ${expanded ? 'items-start' : 'items-center'}`}>
+        <Link
+          href="/settings"
           aria-label="Settings"
           className={`
-            flex items-center gap-4 w-full p-3 text-slate-500
-            hover:bg-white/60 transition-all cursor-pointer rounded-2xl shrink-0
+            group flex items-center w-full p-3 text-slate-500 hover:bg-white/40 hover:shadow-sm hover:text-indigo-600 border border-transparent hover:border-white/50 transition-all duration-500 cursor-pointer rounded-2xl shrink-0 overflow-hidden
             outline-none focus-visible:ring-2 focus-visible:ring-indigo-100
-            ${!expanded ? 'justify-center w-12 h-12' : 'px-4'}
+            ${expanded ? 'px-4 justify-start gap-4' : 'justify-center w-12 h-12 gap-0'}
           `}
         >
-          <Settings size={20} />
-          {expanded && (
-            <span className="font-medium text-sm whitespace-nowrap">Settings</span>
-          )}
-        </button>
+          <Settings size={20} className="shrink-0 transition-transform group-hover:rotate-45 duration-500" />
+          <span className={`font-semibold text-xs whitespace-nowrap overflow-hidden transition-all duration-500 ${expanded ? 'max-w-[100px] opacity-100' : 'max-w-0 opacity-0'}`}>
+            Settings
+          </span>
+        </Link>
 
         <div className={`
-          flex items-center gap-3 w-full p-3 shrink-0
-          ${!expanded ? 'flex-col gap-1 justify-center' : 'px-4'}
+          flex items-center w-full p-3 shrink-0 overflow-hidden transition-all duration-500
+          ${expanded ? 'px-4 justify-start gap-3' : 'flex-col gap-1 justify-center w-12 h-12 gap-0'}
         `}>
-          <div className="relative">
+          <div className="relative shrink-0">
             <Cloud aria-hidden="true" size={16} className="text-emerald-500 shrink-0 relative z-10" />
-            <div className="absolute inset-0 bg-emerald-500/30 blur-md rounded-full" />
+            <div className="absolute inset-0 bg-emerald-500/30 blur-md rounded-full"></div>
           </div>
-          <span className={`font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap overflow-hidden transition-all duration-500 ${expanded ? 'max-w-[50px] opacity-100 text-[10px]' : 'max-w-0 opacity-0'}`}>
-
+          <span className={`font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap overflow-hidden transition-all duration-500 ${expanded ? 'max-w-[50px] opacity-100 text-[10px]' : 'max-w-0 opacity-0 text-[7px]'}`}>
             Synced
-
           </span>
         </div>
 
