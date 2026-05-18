@@ -297,7 +297,7 @@ export default function AIWorkspace() {
     if (e.target.files?.length > 0) processFiles(Array.from(e.target.files));
   };
 
-  const selectedCount   = files.filter(f => f.selected).length;
+  const selectedCount = files.filter(f => f.selected).length;
   const isInputDisabled = isRagMode && selectedCount === 0;
 
   const handleStopGeneration = () => {
@@ -528,9 +528,8 @@ export default function AIWorkspace() {
             <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Context</h3>
-                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border transition-colors ${
-                  selectedCount > 0 ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-slate-400 bg-slate-50 border-slate-100'
-                }`}>{selectedCount} Selected</span>
+                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border transition-colors ${selectedCount > 0 ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-slate-400 bg-slate-50 border-slate-100'
+                  }`}>{selectedCount} Selected</span>
               </div>
 
               {files.length === 0 ? (
@@ -795,11 +794,11 @@ export default function AIWorkspace() {
                           {msg.timestamp && <span className="text-[10px] text-slate-300 font-medium">{fmtTime(msg.timestamp)}</span>}
                           {msg.role !== 'user' && (
                             <button
-                              onClick={() => handleCopy(msg.content, idx)}
-                              className="flex items-center gap-1 text-[11px] font-bold text-slate-300 hover:text-indigo-500 transition-colors py-0.5 px-1.5 rounded-md hover:bg-slate-50"
-                              title="Copy"
+                               onClick={() => handleCopy(msg.content, idx)}
+                               className="flex items-center gap-1 text-[11px] font-bold text-slate-300 hover:text-indigo-500 transition-colors py-0.5 px-1.5 rounded-md hover:bg-slate-50"
+                               title="Copy"
                             >
-                              {copiedIndex === idx ? <><Check size={12} className="text-green-500" /><span className="text-green-500">Copied</span></> : <><Copy size={12} /> Copy</>}
+                               {copiedIndex === idx ? <><Check size={12} className="text-green-500" /><span className="text-green-500">Copied</span></> : <><Copy size={12} /> Copy</>}
                             </button>
                           )}
                         </div>

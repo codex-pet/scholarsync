@@ -16,11 +16,11 @@ export default function Sidebar({
   const pathname = usePathname();
 
   const navItems = [
-    { icon: Home,        path: '/dashboard', label: 'Home'    },
-    { icon: Sparkles,    path: '/ai',        label: 'AI'      },
-    { icon: BookOpen,    path: '/library',   label: 'Library' },
-    { icon: Layout,      path: '/study',     label: 'Study'   },
-    { icon: CheckSquare, path: '/tasks',     label: 'Tasks'   },
+    { icon: Home, path: '/dashboard', label: 'Home' },
+    { icon: Sparkles, path: '/ai', label: 'AI' },
+    { icon: BookOpen, path: '/library', label: 'Library' },
+    { icon: Layout, path: '/study', label: 'Study' },
+    { icon: CheckSquare, path: '/tasks', label: 'Tasks' },
   ];
 
   // In the mobile drawer the sidebar is always "expanded"
@@ -142,7 +142,7 @@ export default function Sidebar({
           <button
             onClick={() => setIsExpanded?.(!isExpanded)}
             aria-label={isExpanded ? 'Collapse Sidebar' : 'Expand Sidebar'}
-            className="p-2.5 rounded-full bg-white/30 hover:bg-white/60 text-slate-500 hover:text-indigo-600 transition-all border border-white/40 shadow-sm flex items-center justify-center mx-auto outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+            className="p-2.5 mt-1 rounded-full bg-white/30 hover:bg-white/60 text-slate-500 hover:text-indigo-600 transition-all duration-300 border border-white/40 shadow-sm flex items-center justify-center mx-auto outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
           >
             {isExpanded ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
           </button>

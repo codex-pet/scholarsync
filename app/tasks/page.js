@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { 
-  CheckCircle2, Circle, Clock, Plus, Calendar, Tag, AlertCircle, Trash2, 
+import {
+  CheckCircle2, Circle, Clock, Plus, Calendar, Tag, AlertCircle, Trash2,
   Play, Pause, Square, ChevronRight, ChevronDown, ChevronUp, Pencil, Flag, X, Check, ListChecks
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
@@ -41,7 +41,7 @@ function TaskNotes({ taskId, initialNotes }) {
 
   return (
     <div className="mt-4 pl-0 sm:pl-[48px] pr-2 pb-2 relative">
-      <textarea 
+      <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         onBlur={handleBlur}
@@ -728,7 +728,6 @@ export default function Tasks() {
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>

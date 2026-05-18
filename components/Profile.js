@@ -82,14 +82,14 @@ export default function Profile({ isMobile = false }) {
         : '?';
 
     return (
-        <div 
-            ref={menuRef} 
+        <div
+            ref={menuRef}
             className={`${isMobile ? 'relative' : 'fixed bottom-3 left-6'} z-[60]`}
         >
 
             {/* Pop-up Menu */}
             {isOpen && (
-                <div 
+                <div
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="profile-button"
@@ -130,8 +130,8 @@ export default function Profile({ isMobile = false }) {
                 ${!isMobile ? 'bg-gradient-to-r from-white/20 via-transparent to-white/10' : ''}
                 backdrop-blur-2xl backdrop-saturate-[1.8]
                 border border-white/40
-                shadow-[0_8px_32px_0_rgba(31,38,135,0.1)]
-                hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.2)]
+                shadow-[0_8px_32px_0_rgba(31,38,135,0.15)]
+                hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.25)]
                 hover:bg-white/30`}
             >
                 {/* Avatar */}

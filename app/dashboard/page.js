@@ -50,6 +50,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-10 xl:p-12 space-y-6 sm:space-y-8 lg:space-y-10 max-w-7xl mx-auto">
       <Header />
+      <SearchArea />
 
       {/* ── STATS CARDS ── */}
       {!loading && (
@@ -70,6 +71,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* AI ASSISTANT PROMO */}
       <section>
         <div className="flex items-center mb-4">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -251,43 +253,30 @@ export default function Dashboard() {
                   Details <ChevronRight size={13} />
                 </Link>
               </div>
-              <div className="flex justify-center">
+
+              <div className="flex justify-center py-2">
                 <ProgressRing />
               </div>
-              <Link href="/study"
-                className="mt-6 w-full py-3.5 flex items-center justify-center gap-2 font-bold text-sm text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 group/btn"
-              >
-                Go to Study Center
-                <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-              </Link>
             </div>
           </section>
 
-          {/* Quick Links to sections */}
-          <section className="space-y-3">
-            <h2 className="text-base font-bold text-slate-800">Quick Navigation</h2>
-            <div className="grid grid-cols-1 gap-3">
-              {[
-                { label: "My Library", sub: `${files.length} files uploaded`, href: "/library", Icon: LibraryBig, accent: "text-indigo-500", bg: "bg-indigo-50/60 border-indigo-100/80" },
-                { label: "Study Center", sub: `${studySets.length} study sets ready`, href: "/study", Icon: BrainCircuit, accent: "text-purple-500", bg: "bg-purple-50/60 border-purple-100/80" },
-                { label: "Task List", sub: "Manage your to-do's", href: "/tasks", Icon: CheckSquare, accent: "text-emerald-500", bg: "bg-emerald-50/60 border-emerald-100/80" },
-              ].map(({ label, sub, href, Icon, accent, bg }) => (
-                <Link key={label} href={href}
-                  className={`flex items-center gap-4 ${bg} backdrop-blur-md border rounded-2xl px-5 py-4 hover:shadow-md hover:-translate-y-0.5 transition-all group`}
-                >
-                  <div className={`p-2 bg-white/70 rounded-xl border border-white/80 ${accent}`}>
-                    <Icon size={18} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-700 text-sm">{label}</p>
-                    <p className="text-xs text-slate-400">{sub}</p>
-                  </div>
-                  <ChevronRight size={16} className={`${accent} opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all`} />
-                </Link>
-              ))}
-            </div>
+          {/* Today's Tasks */}
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <CheckSquare className="text-emerald-500" size={22} /> Today&apos;s Tasks
+            </h2>
+            <TaskList />
+          </section>
+
+          {/* Quick AI Help */}
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Sparkles className="text-indigo-400" size={22} /> Quick AI Help
+            </h2>
+            <AIAssistant />
           </section>
         </div>
+
       </div>
     </div>
   );
