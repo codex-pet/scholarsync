@@ -1,12 +1,49 @@
+"use client";
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
-import SearchArea from "@/components/SearchArea";
 import RecentDocs from "@/components/RecentDocs";
 import ProgressRing from "@/components/ProgressRing";
-import TaskList from "@/components/TaskList";
-import AIAssistant from "@/components/AIAssistant";
-import { ArrowRight, BookOpen, BrainCircuit, CheckSquare, Sparkles } from "lucide-react";
+import {
+  ArrowRight, BookOpen, BrainCircuit, Sparkles, ChevronRight,
+  LibraryBig, FileText, Target, Zap, TrendingUp, BookMarked
+} from "lucide-react";
+import Link from "next/link";
+import { loadFilesLocally, loadStudySetsLocally } from "../../lib/indexeddb";
 
 export default function Dashboard() {
+  const [files, setFiles] = useState([]);
+  const [studySets, setStudySets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [f, s] = await Promise.all([loadFilesLocally(), loadStudySetsLocally()]);
+        setFiles(f);
+        setStudySets(s);
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
+    }
+    load();
+  }, []);
+
+  const totalFlashcards = studySets.reduce((a, s) => a + (s.flashcards?.length || 0), 0);
+  const totalQuizQs = studySets.reduce((a, s) => a + (s.quiz?.length || 0), 0);
+
+  // Sort sets: recently studied first, then by creation date
+  const sortedSets = [...studySets].sort((a, b) => {
+    const aTime = a.lastStudied || a.createdAt || 0;
+    const bTime = b.lastStudied || b.createdAt || 0;
+    return bTime - aTime;
+  });
+
+  const STATS = [
+    { label: "Files in Library", value: files.length, Icon: LibraryBig, href: "/library", accent: "text-indigo-500", blob: "from-indigo-400/10 to-indigo-300/5", border: "border-indigo-100/60" },
+    { label: "Study Sets", value: studySets.length, Icon: BrainCircuit, href: "/study", accent: "text-purple-500", blob: "from-purple-400/10 to-purple-300/5", border: "border-purple-100/60" },
+    { label: "Flashcards", value: totalFlashcards, Icon: BookOpen, href: "/study", accent: "text-emerald-500", blob: "from-emerald-400/10 to-emerald-300/5", border: "border-emerald-100/60" },
+    { label: "Quiz Questions", value: totalQuizQs, Icon: Target, href: "/study", accent: "text-orange-400", blob: "from-orange-400/10 to-orange-300/5", border: "border-orange-100/60" },
+  ];
+
   return (
     <div className="p-4 sm:p-6 lg:p-10 xl:p-12 space-y-6 sm:space-y-8 lg:space-y-10 max-w-7xl mx-auto">
       <Header />
@@ -52,20 +89,15 @@ export default function Dashboard() {
                   Expires in 32h
                 </span>
               </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-bold text-slate-400 tracking-widest">
-                  <span>READING PROGRESS</span>
-                  <span className="text-indigo-500">65%</span>
-                </div>
-                <div className="w-full bg-slate-200/50 h-2 rounded-full overflow-hidden">
-                  <div className="bg-indigo-500 h-full w-[65%] rounded-full shadow-[0_0_10px_rgba(99,102,241,0.3)]" />
-                </div>
+              <div className="flex justify-center">
+                <ProgressRing />
               </div>
-
-              <button className="w-full bg-indigo-600 text-white py-3.5 sm:py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 text-sm sm:text-base">
-                Continue Reading <ArrowRight size={18} />
-              </button>
+              <Link href="/study"
+                className="mt-6 w-full py-3.5 sm:py-3.5 flex items-center justify-center gap-2 font-bold text-sm text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 text-sm sm:text-base group/btn"
+              >
+                Go to Study Center
+                <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+              </Link>
             </div>
           </section>
         </div>

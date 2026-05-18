@@ -1,7 +1,7 @@
 // app/ClientLayout.js
 "use client";
-import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState, useEffect, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Profile from '@/components/Profile';
 import AuthPage from '@/components/AuthPage';
@@ -9,8 +9,10 @@ import { Menu, X } from 'lucide-react';
 
 export default function ClientLayout({ children }) {
     const pathname = usePathname();
+    const router = useRouter();
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isAuthenticated, setIsAuthenticated] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isAuthLoading, setIsAuthLoading] = useState(true);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     // Route detection logic
@@ -32,6 +34,21 @@ export default function ClientLayout({ children }) {
         }
         return () => { document.body.style.overflow = ''; };
     }, [isMobileOpen]);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                setIsAuthenticated(true);
+            } else {
+                setIsAuthenticated(false);
+                if (isDashboardRoute) {
+                    router.push('/login');
+                }
+            }
+            setIsAuthLoading(false);
+        });
+        return () => unsubscribe();
+    }, [isLoginPage, isDashboardRoute, router]);
 
     return (
         <body className="bg-[#F8FAFC] min-h-screen relative overflow-x-hidden">
@@ -96,7 +113,7 @@ export default function ClientLayout({ children }) {
                 >
                     <Sidebar
                         isExpanded={true}
-                        setIsExpanded={() => {}}
+                        setIsExpanded={() => { }}
                         isMobileDrawer={true}
                         onClose={() => setIsMobileOpen(false)}
                     />

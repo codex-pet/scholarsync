@@ -1,23 +1,75 @@
 "use client";
-import { CheckSquare, Clock, Link as LinkIcon, Plus, Calendar, Tag, ChevronRight, MoreVertical } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  CheckCircle2, Circle, Clock, Plus, Calendar, Tag, AlertCircle, Trash2,
+  Play, Pause, Square, ChevronRight, ChevronDown, ChevronUp, Pencil, Flag, X, Check, ListChecks
+} from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { collection, addDoc, query, where, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+
+const tagColors = {
+  Reading: "bg-indigo-100 text-indigo-700",
+  Assignment: "bg-orange-100 text-orange-700",
+  Project: "bg-emerald-100 text-emerald-700",
+  Study: "bg-pink-100 text-pink-700",
+  Other: "bg-slate-200 text-slate-700"
+};
+
+const priorityColors = {
+  High: "text-rose-600 bg-rose-100/80 border-rose-200",
+  Medium: "text-amber-600 bg-amber-100/80 border-amber-200",
+  Low: "text-blue-600 bg-blue-100/80 border-blue-200"
+};
+
+const priorityWeight = { High: 3, Medium: 2, Low: 1 };
+
+function TaskNotes({ taskId, initialNotes }) {
+  const [notes, setNotes] = useState(initialNotes || "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleBlur() {
+    if (notes === initialNotes) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "tasks", taskId), { notes });
+    } catch (err) {
+      console.error(err);
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="mt-4 pl-0 sm:pl-[48px] pr-2 pb-2 relative">
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        onBlur={handleBlur}
+        placeholder="Add sub-tasks, links, or notes here..."
+        className="w-full bg-white/50 backdrop-blur-sm border border-white/80 rounded-2xl p-4 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 focus:bg-white/80 min-h-[100px] resize-y placeholder:text-slate-400 shadow-inner transition-all"
+      />
+      {saving && <span className="absolute bottom-5 right-6 text-[10px] text-slate-400 font-bold uppercase">Saving...</span>}
+    </div>
+  );
+}
 
 export default function Tasks() {
   const tasks = [
-    { name: "Read Chapter 5 of Physics",  tag: "Reading",    due: "Today",    color: "bg-[#D1D1FF]/30 text-indigo-600",  priority: "High"   },
-    { name: "Complete Bio Assignment",     tag: "Assignment", due: "Tomorrow", color: "bg-[#FFD8BE]/30 text-orange-600",  priority: "Medium" },
-    { name: "Study for Math Exam",         tag: "Study",      due: "Mar 27",   color: "bg-[#E2F0CB]/40 text-green-700",   priority: "High"   },
+    { name: "Read Chapter 5 of Physics", tag: "Reading", due: "Today", color: "bg-[#D1D1FF]/30 text-indigo-600", priority: "High" },
+    { name: "Complete Bio Assignment", tag: "Assignment", due: "Tomorrow", color: "bg-[#FFD8BE]/30 text-orange-600", priority: "Medium" },
+    { name: "Study for Math Exam", tag: "Study", due: "Mar 27", color: "bg-[#E2F0CB]/40 text-green-700", priority: "High" },
   ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 xl:p-12 max-w-[1400px] mx-auto space-y-6 sm:space-y-8 lg:space-y-10">
 
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+      <header className="flex flex-col sm:flex-row flex-col sm:flex-row sm:justify-between sm:items-start sm:items-end gap-4 gap-6 relative z-50">
         <div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl text-slate-800 tracking-tight font-bold">
             Daily Tasks
           </h1>
-          <p className="text-slate-400 mt-1.5 font-medium text-sm sm:text-base">
+          <p className="text-slate-500 mt-1.5 font-medium text-sm sm:text-base">
             Manage your academic schedule and deadlines
           </p>
         </div>

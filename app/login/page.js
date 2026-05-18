@@ -1,10 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle,
 } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
 
 /* ─── Reusable Input Field ───────────────────────────────────────── */
 function InputField({ label, id, type = "text", value, onChange, error, icon: Icon, suffix }) {
@@ -13,7 +15,7 @@ function InputField({ label, id, type = "text", value, onChange, error, icon: Ic
       <label htmlFor={id} className="block text-sm font-semibold text-slate-700">
         {label}
       </label>
-      <div className={`relative flex items-center rounded-2xl border bg-slate-50/80 transition-all duration-200 focus-within:bg-white focus-within:shadow-md ${error ? "border-rose-400 focus-within:border-rose-400 focus-within:shadow-rose-100" : "border-slate-200 focus-within:border-indigo-400 focus-within:shadow-indigo-100"}`}>
+      <div className={`relative flex items-center overflow-hidden rounded-2xl border bg-slate-50/80 transition-all duration-200 focus-within:bg-white focus-within:shadow-md ${error ? "border-rose-400 focus-within:border-rose-400 focus-within:shadow-rose-100" : "border-slate-200 focus-within:border-indigo-400 focus-within:shadow-indigo-100"}`}>
         {Icon && (
           <span className="pl-4 text-slate-400 shrink-0">
             <Icon size={17} />
@@ -45,6 +47,16 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const isLoggingIn = useRef(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && !isLoggingIn.current) {
+        router.push("/dashboard");
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   // Form state
   const [form, setForm] = useState({
@@ -73,14 +85,54 @@ export default function AuthPage() {
     return e;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length === 0) {
+      isLoggingIn.current = true;
+      try {
+        if (mode === "login") {
+          await signInWithEmailAndPassword(auth, form.email, form.password);
+        } else {
+          const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+          await updateProfile(userCredential.user, {
+            displayName: `${form.firstName.trim()} ${form.lastName.trim()}`
+          });
+          // Dispatch event so Profile component knows to re-render with the new displayName
+          window.dispatchEvent(new Event('profileUpdated'));
+        }
+        setSubmitted(true);
+        setTimeout(() => router.push("/dashboard"), 1200);
+      } catch (err) {
+        isLoggingIn.current = false;
+        const cleanError = err.message.replace('Firebase: ', '').replace(/\(auth.*\)\./, '');
+        // Attach generic error to email field to display it
+        setErrors({ email: cleanError });
+      }
+    }
+  }
+
+  async function handleGoogleAuth() {
+    isLoggingIn.current = true;
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
       setSubmitted(true);
-      // Simulate a brief delay then navigate to dashboard
+      window.dispatchEvent(new Event('profileUpdated'));
       setTimeout(() => router.push("/dashboard"), 1200);
+    } catch (err) {
+      isLoggingIn.current = false;
+      console.error("Google Auth Error:", err);
+      let cleanError = err.message;
+      if (err.code === 'auth/popup-closed-by-user') {
+        cleanError = "Sign-in cancelled.";
+      } else if (err.code === 'auth/operation-not-allowed') {
+        cleanError = "Google Sign-In is not enabled in Firebase Console.";
+      } else {
+        cleanError = err.message.replace('Firebase: ', '').replace(/\(auth.*\)\./, '').trim();
+      }
+      setErrors({ email: cleanError || "An error occurred with Google Sign-In." });
     }
   }
 
@@ -283,6 +335,7 @@ export default function AuthPage() {
               {/* Google OAuth placeholder */}
               <button
                 type="button"
+                onClick={handleGoogleAuth}
                 className="w-full py-3.5 rounded-2xl border-2 border-slate-200 text-slate-700 font-semibold text-sm flex items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200"
               >
                 <svg width="18" height="18" viewBox="0 0 48 48">

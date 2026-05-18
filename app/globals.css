@@ -27,12 +27,16 @@ body {
 }
 
 /* ─── Accessibility ────────────────────────────────────── */
-:focus, :focus-visible {
+:focus,
+:focus-visible {
   outline: none !important;
 }
 
 /* ─── Typography ──────────────────────────────────────── */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: 'Quicksand', sans-serif;
   font-weight: 700;
 }
@@ -55,41 +59,118 @@ h1, h2, h3, h4 {
 }
 
 /* ─── Scrollbar Utilities ─────────────────────────────── */
-.custom-scrollbar::-webkit-scrollbar        { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb  { background: #E2E8F0; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-track  { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Hide scrollbar completely but allow scrolling */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
 
 /* Hide scrollbar but keep scrollability (for chip rows, etc.) */
-.no-scrollbar               { scrollbar-width: none; -ms-overflow-style: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 /* ─── Animations ──────────────────────────────────────── */
 @keyframes pulse-slow {
-  0%, 100% { opacity: 1;   transform: scale(1);    }
-  50%       { opacity: 0.7; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
 }
 
 .animate-pulse-slow {
   animation: pulse-slow 6s ease-in-out infinite;
 }
 
+/* Override WebKit Autofill Background to remain transparent */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-transition: background-color 5000s ease-in-out 0s;
+  transition: background-color 5000s ease-in-out 0s;
+  -webkit-text-fill-color: #1e293b !important;
+}
+
+/* 3D Flip Effects for Flashcards */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
 /* Slide-in for mobile sidebar drawer */
 @keyframes slideInLeft {
-  from { transform: translateX(-100%); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Fade overlay */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* ─── Responsive Helpers ──────────────────────────────── */
 
 /* Ensure tap targets are comfortable on touch devices */
 @media (max-width: 1024px) {
-  button, a {
+
+  button,
+  a {
     min-height: 36px;
   }
 }
@@ -97,6 +178,7 @@ h1, h2, h3, h4 {
 /* Prevent content being hidden under the fixed mobile header */
 @media (max-width: 1023px) {
   .dashboard-content-offset {
-    padding-top: 4rem; /* 64px = h-16 */
+    padding-top: 4rem;
+    /* 64px = h-16 */
   }
 }

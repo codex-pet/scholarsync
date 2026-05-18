@@ -1,8 +1,9 @@
 import { CheckCircle2, Circle } from "lucide-react";
+import Link from "next/link";
 
 export default function TaskList() {
   const tasks = [
-    { title: "Review Chapter 3",       completed: true  },
+    { title: "Review Chapter 3", completed: true },
     { title: "Complete Exercise Set A", completed: false },
   ];
 

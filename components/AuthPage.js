@@ -1,20 +1,51 @@
 'use client';
 import React, { useState } from 'react';
 import { Mail, Lock, User, Sparkles } from 'lucide-react';
+import { auth } from '../lib/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 const AuthPage = ({ onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+      onLoginSuccess();
+    } catch (err) {
+      // Clean up standard firebase error messages
+      const cleanError = err.message.replace('Firebase: ', '').replace(/\(auth.*\)\./, '');
+      setError(cleanError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Reusable Input Component
-  const InputField = ({ icon: Icon, type, placeholder }) => (
+  const InputField = ({ icon: Icon, type, placeholder, value, onChange }) => (
     <div className="relative mb-4">
       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
         <Icon className="h-5 w-5 text-gray-400" />
       </div>
       <input
         type={type}
+        value={value}
+        onChange={onChange}
         className="block w-full pl-11 pr-4 py-3 border border-gray-100 rounded-xl bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
         placeholder={placeholder}
+        required
       />
     </div>
   );
@@ -46,13 +77,19 @@ const AuthPage = ({ onLoginSuccess }) => {
         </div>
 
         {/* Form Fields */}
-        <form onSubmit={(e) => e.preventDefault()}>
+        <form onSubmit={handleSubmit}>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm text-center">
+              {error}
+            </div>
+          )}
+
           {!isLogin && (
-            <InputField icon={User} type="text" placeholder="Full Name" />
+            <InputField icon={User} type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
           )}
           
-          <InputField icon={Mail} type="email" placeholder="Email" />
-          <InputField icon={Lock} type="password" placeholder="Password" />
+          <InputField icon={Mail} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <InputField icon={Lock} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           
           {!isLogin && (
             <InputField icon={Lock} type="password" placeholder="Confirm Password" />
@@ -60,10 +97,14 @@ const AuthPage = ({ onLoginSuccess }) => {
 
           {/* Primary Action Button */}
           <button 
-           onClick={onLoginSuccess} // <--- ADD THIS
-  type="button"            // <--- ADD THIS so it doesn't refresh the page
-          className="w-full bg-[#E0E7FF] hover:bg-[#D1DAFF] text-[#4F46E5] font-semibold py-4 rounded-xl transition-colors mt-4 shadow-sm">
-            {isLogin ? 'Sign In' : 'Create Account'}
+           type="submit"
+           disabled={loading}
+          className="w-full bg-[#E0E7FF] hover:bg-[#D1DAFF] text-[#4F46E5] font-semibold py-4 rounded-xl transition-colors mt-4 shadow-sm disabled:opacity-50 flex justify-center items-center">
+            {loading ? (
+              <span className="w-5 h-5 border-2 border-[#4F46E5] border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              isLogin ? 'Sign In' : 'Create Account'
+            )}
           </button>
         </form>
 

@@ -1,9 +1,29 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
   UploadCloud, FileText, CheckCircle2, Circle, Send, Sparkles,
-  FileImage, ShieldCheck, Globe, LibraryBig, Lightbulb, Wand2, PanelLeftClose, PanelLeftOpen
+  FileImage, ShieldCheck, Globe, LibraryBig, Lightbulb, Wand2, Loader2, Square, Edit3, Copy, Check, X, ExternalLink, ZoomIn, ZoomOut, Trash2, AlertTriangle, BookOpen, RotateCcw, MessageSquarePlus, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
+import { saveFileLocally, loadFilesLocally, saveChatSession, loadChatSession, deleteChatSession } from '../../lib/indexeddb';
+import Link from 'next/link';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+// --- Utility helpers ---
+const FILE_BADGE = {
+  pdf: { label: 'PDF', cls: 'bg-red-50 text-red-600 border-red-200' },
+  img: { label: 'IMG', cls: 'bg-sky-50 text-sky-600 border-sky-200' },
+  png: { label: 'PNG', cls: 'bg-sky-50 text-sky-600 border-sky-200' },
+  jpg: { label: 'JPG', cls: 'bg-sky-50 text-sky-600 border-sky-200' },
+  doc: { label: 'DOC', cls: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
+};
+const getBadge = (type) => FILE_BADGE[type] || FILE_BADGE.doc;
+const fmtTime = (ts) => ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+const fileSizeMB = (s) => parseFloat(s) || 0;
 
 export default function AIWorkspace() {
   const [isDragging, setIsDragging] = useState(false);
@@ -13,19 +33,19 @@ export default function AIWorkspace() {
 
   const [files, setFiles] = useState([
     { id: 1, name: "Biology_Ch5_Photosynthesis.pdf", size: "2.4 MB", type: "pdf", selected: false },
-    { id: 2, name: "Chemistry_Lab_Notes.docx",      size: "1.1 MB", type: "doc", selected: false },
-    { id: 3, name: "Lecture_Board_Scan.jpg",         size: "3.5 MB", type: "img", selected: false },
+    { id: 2, name: "Chemistry_Lab_Notes.docx", size: "1.1 MB", type: "doc", selected: false },
+    { id: 3, name: "Lecture_Board_Scan.jpg", size: "3.5 MB", type: "img", selected: false },
   ]);
 
   const toggleFileSelection = (id) =>
     setFiles(files.map(f => f.id === id ? { ...f, selected: !f.selected } : f));
 
-  const handleDragOver  = (e) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = ()  => setIsDragging(false);
-  const handleDrop      = (e) => { e.preventDefault(); setIsDragging(false); };
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => setIsDragging(false);
+  const handleDrop = (e) => { e.preventDefault(); setIsDragging(false); };
   const handleFileSelect = (e) => console.log("Files selected:", Array.from(e.target.files));
 
-  const selectedCount   = files.filter(f => f.selected).length;
+  const selectedCount = files.filter(f => f.selected).length;
   const isInputDisabled = isRagMode && selectedCount === 0;
 
   const quickPrompts = [
@@ -80,9 +100,8 @@ export default function AIWorkspace() {
             <div
               onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
               onClick={() => fileInputRef.current.click()}
-              className={`w-full border-2 border-dashed rounded-[2rem] p-6 sm:p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
-                isDragging ? 'border-indigo-400 bg-indigo-50 scale-[1.02]' : 'border-[#D1D1FF]/60 bg-white hover:bg-slate-50'
-              }`}
+              className={`w-full border-2 border-dashed rounded-[2rem] p-6 sm:p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${isDragging ? 'border-indigo-400 bg-indigo-50 scale-[1.02]' : 'border-[#D1D1FF]/60 bg-white hover:bg-slate-50'
+                }`}
             >
               <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
               <UploadCloud size={28} className="text-indigo-500 mb-3" />
@@ -94,9 +113,8 @@ export default function AIWorkspace() {
             <div className="space-y-3 sm:space-y-4">
               <div className="flex justify-between items-center ml-1">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Context</h3>
-                <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full uppercase tracking-widest">
-                  {selectedCount} Selected
-                </span>
+                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border transition-colors ${selectedCount > 0 ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-slate-400 bg-slate-50 border-slate-100'
+                  }`}>{selectedCount} Selected</span>
               </div>
               <div className="flex flex-col gap-2">
                 {files.map((file) => (
@@ -140,11 +158,10 @@ export default function AIWorkspace() {
             </div>
             <button
               onClick={() => setIsRagMode(!isRagMode)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all duration-300 border shadow-sm shrink-0 ${
-                isRagMode
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all duration-300 border shadow-sm shrink-0 ${isRagMode
                   ? 'bg-[#EAF5E4] text-[#2E7D32] border-[#C8E6C9] hover:bg-[#DCECD6]'
                   : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-              }`}
+                }`}
             >
               {isRagMode ? <ShieldCheck size={14} /> : <Globe size={14} />}
               <span className="hidden sm:inline">{isRagMode ? 'Grounded Mode' : 'Web Knowledge'}</span>

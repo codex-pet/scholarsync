@@ -16,11 +16,11 @@ export default function Sidebar({
   const pathname = usePathname();
 
   const navItems = [
-    { icon: Home,        path: '/dashboard', label: 'Home'    },
-    { icon: Sparkles,    path: '/ai',        label: 'AI'      },
-    { icon: BookOpen,    path: '/library',   label: 'Library' },
-    { icon: Layout,      path: '/study',     label: 'Study'   },
-    { icon: CheckSquare, path: '/tasks',     label: 'Tasks'   },
+    { icon: Home, path: '/dashboard', label: 'Home' },
+    { icon: Sparkles, path: '/ai', label: 'AI' },
+    { icon: BookOpen, path: '/library', label: 'Library' },
+    { icon: Layout, path: '/study', label: 'Study' },
+    { icon: CheckSquare, path: '/tasks', label: 'Tasks' },
   ];
 
   // In the mobile drawer the sidebar is always "expanded"
@@ -146,8 +146,10 @@ export default function Sidebar({
             <Cloud aria-hidden="true" size={16} className="text-emerald-500 shrink-0 relative z-10" />
             <div className="absolute inset-0 bg-emerald-500/30 blur-md rounded-full" />
           </div>
-          <span className={`font-bold uppercase tracking-widest text-slate-400 ${expanded ? 'text-[10px]' : 'text-[7px]'}`}>
+          <span className={`font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap overflow-hidden transition-all duration-500 ${expanded ? 'max-w-[50px] opacity-100 text-[10px]' : 'max-w-0 opacity-0'}`}>
+
             Synced
+
           </span>
         </div>
 
@@ -156,7 +158,7 @@ export default function Sidebar({
           <button
             onClick={() => setIsExpanded?.(!isExpanded)}
             aria-label={isExpanded ? 'Collapse Sidebar' : 'Expand Sidebar'}
-            className="p-2.5 rounded-full bg-white/30 hover:bg-white/60 text-slate-500 hover:text-indigo-600 transition-all border border-white/40 shadow-sm flex items-center justify-center mx-auto outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+            className="p-2.5 mt-1 rounded-full bg-white/30 hover:bg-white/60 text-slate-500 hover:text-indigo-600 transition-all duration-300 border border-white/40 shadow-sm flex items-center justify-center mx-auto outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
           >
             {isExpanded ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
           </button>

@@ -1,6 +1,24 @@
-import { Sparkles, ArrowRight } from "lucide-react";
+"use client";
+import { useEffect, useState } from "react";
+import { Sparkles, ArrowRight, FileText } from "lucide-react";
+import { loadFilesLocally } from "../lib/indexeddb";
+import Link from "next/link";
+
+const QUICK_PROMPTS = [
+  "Summarize my latest file",
+  "Create flashcards for me",
+  "Quiz me on my materials",
+];
 
 export default function AIAssistant() {
+  const [fileCount, setFileCount] = useState(0);
+
+  useEffect(() => {
+    loadFilesLocally()
+      .then(f => setFileCount(f.length))
+      .catch(() => setFileCount(0));
+  }, []);
+
   return (
     <div className="bg-[#F3EFFF] p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] space-y-4">
       <div className="flex items-center gap-2 text-indigo-600 font-bold text-base sm:text-lg">

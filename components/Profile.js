@@ -1,9 +1,14 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import Link from 'next/link';
 
 export default function Profile({ isMobile = false }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [userName, setUserName] = useState('Loading...');
+    const [userPhoto, setUserPhoto] = useState(null);
     const menuRef = useRef(null);
     const router = useRouter();
 
@@ -26,28 +31,37 @@ export default function Profile({ isMobile = false }) {
         router.push('/');
     };
 
+    const initials = userName !== 'Loading...' && userName !== 'Guest'
+        ? userName.charAt(0).toUpperCase()
+        : '?';
+
     return (
-        <div 
-            ref={menuRef} 
+        <div
+            ref={menuRef}
             className={`${isMobile ? 'relative' : 'fixed bottom-3 left-6'} z-[60]`}
         >
 
             {/* Pop-up Menu */}
             {isOpen && (
-                <div 
+                <div
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="profile-button"
-                    className={`absolute ${isMobile ? 'top-[calc(100%+0.5rem)] right-0' : 'bottom-full left-0 mb-3'} w-40 p-1.5 rounded-2xl transition-all duration-300 ease-in-out
-                    bg-white/[0.8] backdrop-blur-2xl backdrop-saturate-[1.8]
+                    className={`absolute ${isMobile ? 'top-[calc(100%+0.5rem)] right-0' : 'bottom-full left-0 mb-3'} w-48 p-1.5 rounded-2xl transition-all duration-300 ease-in-out
+                    bg-white/[0.85] backdrop-blur-2xl backdrop-saturate-[1.8]
                     border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] z-[70]`}
                 >
+                    <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                        <p className="text-xs font-bold text-slate-800 truncate">{userName}</p>
+                        <p className="text-[10px] text-slate-400 font-medium truncate">{auth.currentUser?.email}</p>
+                    </div>
+
                     <button
                         role="menuitem"
                         onClick={handleLogout}
                         className="w-full flex items-center justify-start gap-2 px-3 py-2 text-sm font-semibold text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-colors focus-visible:ring-2 focus-visible:ring-red-100 outline-none"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                             <polyline points="16 17 21 12 16 7"></polyline>
                             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -87,7 +101,7 @@ export default function Profile({ isMobile = false }) {
                     {!isMobile && (
                         <>
                             <span className="text-sm font-bold text-slate-800 whitespace-nowrap">
-                                Jade Smith
+                                {userName}
                             </span>
                             <span className="text-[10px] font-medium text-indigo-600/80 uppercase tracking-wider whitespace-nowrap">
                                 Pro Plan
