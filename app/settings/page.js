@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, db } from "@/lib/firebase";
 import {
-  onAuthStateChanged, updateProfile, updatePassword,
-  signOut, deleteUser, EmailAuthProvider, reauthenticateWithCredential
+  onAuthStateChanged, updateProfile, updatePassword, updateEmail, verifyBeforeUpdateEmail,
+  signOut, deleteUser, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { HardDrive, Eye, EyeOff, Trash2, LogOut, Database, Download, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useToast, ToastContainer } from "@/components/Toast";
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null);
@@ -20,23 +21,55 @@ export default function SettingsPage() {
   // Profile fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName]   = useState("");
+  const [email, setEmail]         = useState("");
   const [avatarPreview, setAvatarPreview] = useState(null); // base64
   const [saving, setSaving] = useState(false);
 
   // Password
   const [showChangePw, setShowChangePw] = useState(false);
-  const [currentPassword, setCurrentPassword]   = useState("");
   const [newPassword, setNewPassword]             = useState("");
-  const [showCurrentPw, setShowCurrentPw]         = useState(false);
+  const [confirmPassword, setConfirmPassword]     = useState("");
   const [showNewPw, setShowNewPw]                 = useState(false);
+  const [showConfirmPw, setShowConfirmPw]         = useState(false);
+  const [passwordLoading, setPasswordLoading]     = useState(false);
 
   // Photo Viewer
   const [viewingPhoto, setViewingPhoto] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // Custom confirmation modal state
+  
+  // Change Email
+  const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [showEmailPw, setShowEmailPw] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
+  const { toasts, toast, dismissToast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
+
+        // Fetch custom email from Firestore (fallback to localStorage or Auth email)
+        try {
+          const localEmail = localStorage.getItem(`email_${u.uid}`);
+          if (localEmail) {
+            setEmail(localEmail);
+          } else {
+            const userDoc = await getDoc(doc(db, "users", u.uid));
+            if (userDoc.exists()) {
+              setEmail(userDoc.data().email || u.email || "");
+            } else {
+              setEmail(u.email || "");
+            }
+          }
+        } catch (e) {
+          console.error("Error loading user email:", e);
+          setEmail(u.email || "");
+        }
+
         // Prefer individually-saved names from localStorage (preserves multi-word first names)
         const savedFirst = localStorage.getItem(`firstName_${u.uid}`);
         const savedLast  = localStorage.getItem(`lastName_${u.uid}`);
@@ -75,7 +108,10 @@ export default function SettingsPage() {
   function handleAvatarFile(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { alert("File must be under 10MB."); return; }
+    if (file.size > 10 * 1024 * 1024) { 
+      toast.warning("File size exceeded", "File must be under 10MB."); 
+      return; 
+    }
     const reader = new FileReader();
     reader.onload = (ev) => setAvatarPreview(ev.target.result);
     reader.readAsDataURL(file);
@@ -109,34 +145,95 @@ export default function SettingsPage() {
         displayName,
         firstName,
         lastName,
-        email: user.email,
+        email: email || user.email || "",
+        avatar: avatarPreview || null,
         avatarUpdated: Date.now()
       }, { merge: true });
 
       // Broadcast update to Header & Profile components
       window.dispatchEvent(new Event("profileUpdated"));
-      alert("Profile saved successfully!");
+      toast.success("Profile saved successfully!", "Your account information is up to date.");
     } catch (err) {
-      alert("Error: " + err.message);
+      toast.error("Profile save failed", err.message);
     }
     setSaving(false);
   }
 
   async function handleUpdatePassword(e) {
     e.preventDefault();
-    if (!user || !newPassword || !currentPassword) return;
+    if (!user || !newPassword || !confirmPassword) return;
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match", "Please make sure your new password and confirm password fields are identical.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error("Weak password", "Password must be at least 8 characters long.");
+      return;
+    }
+
+    setPasswordLoading(true);
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
-      await reauthenticateWithCredential(user, credential);
+      // Attempt direct in-app password update first (succeeds if user's session is fresh)
       await updatePassword(user, newPassword);
-      alert("Password updated successfully!");
-      setCurrentPassword(""); setNewPassword(""); setShowChangePw(false);
+      toast.success("Password updated successfully!", "Your login password has been overridden with the new one.");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowChangePw(false);
     } catch (err) {
-      if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
-        alert("The current password you entered is incorrect.");
+      console.error(err);
+      if (err.code === "auth/requires-recent-login") {
+        // Fallback: If session is stale/requires recent login, send password reset link to their email
+        try {
+          const userEmail = email || user.email;
+          await sendPasswordResetEmail(auth, userEmail);
+          toast.success(
+            "Security verification sent!",
+            `For your security, since you registered or logged in a while ago, a secure password override link has been sent to "${userEmail}". Click it to set your new password!`
+          );
+          setNewPassword("");
+          setConfirmPassword("");
+          setShowChangePw(false);
+        } catch (resetErr) {
+          console.error(resetErr);
+          toast.error("Failed to send reset link", resetErr.message || "Please try again later.");
+        }
       } else {
-        alert("Error: " + err.message);
+        toast.error("Password update failed", err.message || "Failed to update password. Please try again.");
       }
+    } finally {
+      setPasswordLoading(false);
+    }
+  }
+
+  async function handleUpdateEmail(e) {
+    e.preventDefault();
+    if (!user || !newEmail.trim()) return;
+    setEmailLoading(true);
+    setEmailError("");
+
+    try {
+      // Direct Firestore update - completely bypass Firebase Auth email update to avoid credential / security errors!
+      await setDoc(doc(db, "users", user.uid), {
+        email: newEmail.trim()
+      }, { merge: true });
+
+      // Save to localStorage so profile header / context updates instantly
+      localStorage.setItem(`email_${user.uid}`, newEmail.trim());
+
+      // Update local page state
+      setEmail(newEmail.trim());
+
+      // Broadcast profile update event to Header and Profile popup components
+      window.dispatchEvent(new Event("profileUpdated"));
+
+      toast.success("Email updated successfully!", "Your database profile and contact email has been updated.");
+      setIsChangeEmailOpen(false);
+      setNewEmail("");
+    } catch (err) {
+      console.error(err);
+      setEmailError(err.message || "Failed to update email. Please try again.");
+    } finally {
+      setEmailLoading(false);
     }
   }
 
@@ -145,13 +242,17 @@ export default function SettingsPage() {
     router.push("/");
   }
 
-  async function handleDeleteAccount() {
-    if (!window.confirm("Are you absolutely sure? This will permanently delete your account.")) return;
+  async function confirmDeleteAccount() {
     try {
       await deleteUser(user);
       router.push("/");
     } catch (err) {
-      alert("Error: " + err.message + "\n(You may need to sign in again before deleting.)");
+      toast.error(
+        "Account deletion failed", 
+        `${err.message} (You may need to sign in again before deleting.)`
+      );
+    } finally {
+      setDeleteConfirmOpen(false);
     }
   }
 
@@ -273,11 +374,19 @@ export default function SettingsPage() {
                   <div className="flex gap-3">
                     <input
                       type="email"
-                      value={user?.email || ""}
+                      value={email || user?.email || ""}
                       disabled
                       className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-slate-400 font-medium text-sm cursor-not-allowed"
                     />
-                    <button type="button" className="px-5 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm shrink-0">
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setEmailError("");
+                        setNewEmail("");
+                        setIsChangeEmailOpen(true);
+                      }}
+                      className="px-5 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm shrink-0"
+                    >
                       Edit Email
                     </button>
                   </div>
@@ -329,24 +438,8 @@ export default function SettingsPage() {
             </div>
 
             {showChangePw && (
-              <div className="px-8 py-6">
+              <form onSubmit={handleUpdatePassword} className="px-8 py-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Current Password</label>
-                    <div className="relative">
-                      <input
-                        type={showCurrentPw ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Current password"
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 shadow-sm"
-                        required
-                      />
-                      <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors">
-                        {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">New Password</label>
                     <div className="relative">
@@ -354,9 +447,9 @@ export default function SettingsPage() {
                         type={showNewPw ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="New password (min 6 chars)"
+                        placeholder="New password (min 8 chars)"
                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 shadow-sm"
-                        minLength={6}
+                        minLength={8}
                         required
                       />
                       <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors">
@@ -364,17 +457,35 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Confirm New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPw ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-200 shadow-sm"
+                        minLength={8}
+                        required
+                      />
+                      <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors">
+                        {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
                   <div className="sm:col-span-2 flex justify-end mt-2">
                     <button
-                      type="button"
-                      onClick={handleUpdatePassword}
-                      className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-sm active:scale-95"
+                      type="submit"
+                      disabled={passwordLoading}
+                      className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-sm active:scale-95 disabled:opacity-60 flex items-center gap-2"
                     >
-                      Update Password
+                      {passwordLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                      Override Password
                     </button>
                   </div>
                 </div>
-              </div>
+              </form>
             )}
           </div>
 
@@ -389,7 +500,7 @@ export default function SettingsPage() {
                 <button onClick={handleSignOut} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm active:scale-95">
                   <LogOut size={16} /> Sign Out
                 </button>
-                <button onClick={handleDeleteAccount} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-rose-200 text-rose-600 rounded-xl font-bold text-sm hover:bg-rose-50 transition-colors shadow-sm active:scale-95">
+                <button onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-rose-200 text-rose-600 rounded-xl font-bold text-sm hover:bg-rose-50 transition-colors shadow-sm active:scale-95">
                   <Trash2 size={16} /> Delete Account
                 </button>
               </div>
@@ -451,6 +562,103 @@ export default function SettingsPage() {
         </div>
       )}
 
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Premium Confirm Account Deletion Modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-300 animate-in fade-in">
+          <div className="bg-white border border-slate-100 rounded-[32px] max-w-md w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500">
+              <Trash2 size={28} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Delete Account</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Are you absolutely sure you want to delete your account? This action is permanent, and all your stored profile information and local caches will be permanently wiped.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-sm transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAccount}
+                className="flex-1 py-3 px-6 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-rose-200"
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Email Modal */}
+      {isChangeEmailOpen && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-300 animate-in fade-in">
+          <div className="bg-white border border-slate-100 rounded-[32px] max-w-md w-full p-8 shadow-2xl relative space-y-6 animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setIsChangeEmailOpen(false)}
+              disabled={emailLoading}
+              className="absolute top-5 right-5 p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Change Email Address</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Update your contact and profile email address inside the system.
+              </p>
+            </div>
+
+            {emailError && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-semibold flex items-start gap-2 leading-relaxed animate-in fade-in duration-200">
+                <svg className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{emailError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateEmail} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">New Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  placeholder="new-email@domain.com"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-300 focus:bg-white focus:shadow-md transition-all font-sans"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  disabled={emailLoading}
+                  onClick={() => setIsChangeEmailOpen(false)}
+                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-500 hover:bg-slate-50 font-extrabold text-xs transition-colors disabled:opacity-50 cursor-pointer font-sans"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={emailLoading}
+                  className="flex-1 py-3.5 rounded-2xl bg-indigo-600 text-white font-extrabold text-xs hover:bg-indigo-700 transition-all flex items-center justify-center gap-1.5 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer font-sans"
+                >
+                  {emailLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    "Update Email"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

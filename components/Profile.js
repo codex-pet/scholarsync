@@ -9,6 +9,7 @@ export default function Profile({ isMobile = false }) {
     const [isOpen, setIsOpen] = useState(false);
     const [userName, setUserName] = useState('Loading...');
     const [userPhoto, setUserPhoto] = useState(null);
+    const [userEmail, setUserEmail] = useState('');
     const menuRef = useRef(null);
     const router = useRouter();
 
@@ -47,6 +48,10 @@ export default function Profile({ isMobile = false }) {
         } else {
             setUserPhoto(localAvatar || user.photoURL || null);
         }
+
+        // Email: prefer localStorage (set by Settings page), fallback to Firebase Auth
+        const localEmail = localStorage.getItem(`email_${user.uid}`);
+        setUserEmail(localEmail || user.email || '');
     }
 
     useEffect(() => {
@@ -99,7 +104,7 @@ export default function Profile({ isMobile = false }) {
                 >
                     <div className="px-3 py-2 border-b border-slate-100 mb-1">
                         <p className="text-xs font-bold text-slate-800 truncate">{userName}</p>
-                        <p className="text-[10px] text-slate-400 font-medium truncate">{auth.currentUser?.email}</p>
+                        <p className="text-[10px] text-slate-400 font-medium truncate">{userEmail}</p>
                     </div>
 
                     <button

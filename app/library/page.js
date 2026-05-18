@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { saveFileLocally, loadFilesLocally, deleteFileLocally } from "../../lib/indexeddb";
 import { pdfjs } from 'react-pdf';
+import { useToast, ToastContainer } from "@/components/Toast";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -30,16 +31,11 @@ export default function LibraryPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState(null);
-  const [toast, setToast] = useState(null);
   const [fileToView, setFileToView] = useState(null);
+  const [deleteConfirmFiles, setDeleteConfirmFiles] = useState(null); // Custom confirm modal state
   
   const fileInputRef = useRef(null);
-
-  // --- Helpers ---
-  const triggerToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const { toasts, toast, dismissToast } = useToast();
 
   const filteredFiles = files.filter(file => {
     const matchesFilter = activeFilter === "All Files" || file.category === activeFilter;
@@ -92,22 +88,36 @@ export default function LibraryPage() {
   }, []);
 
   // --- Handlers ---
-  const handleDelete = async (id, name) => {
-    await deleteFileLocally(id);
-    setFiles(files.filter(f => f.id !== id));
-    setSelectedFiles(prev => prev.filter(fId => fId !== id));
-    triggerToast(`"${name}" deleted.`, 'error');
+  const handleDelete = (id, name) => {
+    setDeleteConfirmFiles([{ id, name }]);
   };
 
-  const handleBatchDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedFiles.length} files?`)) return;
-    
-    for (const id of selectedFiles) {
-      await deleteFileLocally(id);
+  const handleBatchDelete = () => {
+    const selectedList = files.filter(f => selectedFiles.includes(f.id)).map(f => ({ id: f.id, name: f.name }));
+    setDeleteConfirmFiles(selectedList);
+  };
+
+  const confirmDeletion = async () => {
+    if (!deleteConfirmFiles) return;
+    try {
+      const idsToDelete = deleteConfirmFiles.map(f => f.id);
+      for (const id of idsToDelete) {
+        await deleteFileLocally(id);
+      }
+      setFiles(prev => prev.filter(f => !idsToDelete.includes(f.id)));
+      setSelectedFiles(prev => prev.filter(id => !idsToDelete.includes(id)));
+      
+      if (deleteConfirmFiles.length === 1) {
+        toast.success(`"${deleteConfirmFiles[0].name}" deleted permanently.`);
+      } else {
+        toast.success(`Deleted ${deleteConfirmFiles.length} files successfully.`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected files.");
+    } finally {
+      setDeleteConfirmFiles(null);
     }
-    setFiles(files.filter(f => !selectedFiles.includes(f.id)));
-    setSelectedFiles([]);
-    triggerToast(`Deleted ${selectedFiles.length} files.`, 'success');
   };
 
   const toggleFileSelection = (id) => {
@@ -116,6 +126,7 @@ export default function LibraryPage() {
 
   const handleReSync = async (id) => {
     setFiles(files.map(f => f.id === id ? { ...f, status: 'Syncing...', statusColor: 'bg-blue-400' } : f));
+    toast.info("Syncing document metadata with local memory...");
     setTimeout(() => {
       setFiles(current => current.map(f => {
         if (f.id === id) {
@@ -125,7 +136,7 @@ export default function LibraryPage() {
         }
         return f;
       }));
-      triggerToast("File re-synced!", 'success');
+      toast.success("Document successfully re-synced!", "AI Retention active for 48 hours");
     }, 1500);
   };
 
@@ -190,7 +201,7 @@ export default function LibraryPage() {
 
     setFiles(prev => [...decorated, ...prev]);
     setShowUpload(false);
-    triggerToast(`Uploaded ${resolvedFiles.length} file${resolvedFiles.length > 1 ? 's' : ''}!`);
+    toast.success(`Uploaded ${resolvedFiles.length} file${resolvedFiles.length > 1 ? 's' : ''}!`, "Document stored locally in your browser memory.");
   };
 
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
@@ -204,12 +215,38 @@ export default function LibraryPage() {
   return (
     <div className="p-8 lg:p-12 max-w-[1400px] mx-auto space-y-10 animate-in fade-in duration-300 relative">
       {/* Toast Alert */}
-      {toast && (
-        <div className={`fixed bottom-8 right-8 z-[9999] px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 border animate-in slide-in-from-bottom duration-300 ${
-          toast.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-        }`}>
-          <AlertCircle size={20} className={toast.type === 'error' ? 'text-rose-500' : 'text-emerald-500'} />
-          <span className="font-bold text-sm">{toast.message}</span>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Premium Confirmation Modal */}
+      {deleteConfirmFiles && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-300 animate-in fade-in duration-300">
+          <div className="bg-white border border-slate-100 rounded-[32px] max-w-md w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500">
+              <Trash2 size={28} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Delete Documents</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                {deleteConfirmFiles.length === 1 
+                  ? `Are you sure you want to permanently delete "${deleteConfirmFiles[0].name}"? This action cannot be undone.`
+                  : `Are you sure you want to permanently delete ${deleteConfirmFiles.length} selected files? This action cannot be undone.`}
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteConfirmFiles(null)}
+                className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-sm transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeletion}
+                className="flex-1 py-3 px-6 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-rose-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

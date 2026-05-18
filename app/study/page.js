@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { loadFilesLocally, loadStudySetsLocally, saveStudySetLocally, deleteStudySetLocally } from "../../lib/indexeddb";
 import { Flame, Target, TrendingUp, BookOpen, Zap, Loader2, FileText, CheckCircle, XCircle, ChevronRight, ChevronLeft, ArrowLeft, RefreshCw, LibraryBig, Shuffle, ThumbsUp, ThumbsDown, Trash2, Search, SlidersHorizontal, Award, RotateCcw } from "lucide-react";
+import { useToast, ToastContainer } from "@/components/Toast";
 
 // Shuffle array (Fisher-Yates)
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
@@ -31,6 +32,8 @@ export default function StudyCenter() {
   const [isGenerating, setIsGenerating] = useState(null);
   const [activeSession, setActiveSession] = useState(null);
   const [streak] = useState(() => typeof window !== 'undefined' ? getStreak() : 0);
+  const [resetConfirmSetId, setResetConfirmSetId] = useState(null); // Custom modal state
+  const { toasts, toast, dismissToast } = useToast();
 
   // Search & sort
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,10 +134,11 @@ export default function StudyCenter() {
 
       await saveStudySetLocally(newSet);
       setStudySets(prev => ({ ...prev, [file.id]: newSet }));
+      toast.success("AI Study Set Generated!", `Successfully created 10 flashcards and 5 quiz questions for "${file.name}".`);
 
     } catch (err) {
       console.error("Failed to generate study set", err);
-      alert(`Generation failed: ${err.message}\n\nPlease check your API key and file format.`);
+      toast.error("Generation failed", `Error: ${err.message}. Please check your API key.`);
     } finally {
       setIsGenerating(null);
     }
@@ -184,10 +188,11 @@ export default function StudyCenter() {
 
       await saveStudySetLocally(newSet);
       setStudySets(prev => ({ ...prev, [file.id]: newSet }));
+      toast.success("Study Set Extended!", `Added 10 more flashcards and 5 more quiz questions for "${file.name}".`);
 
     } catch (err) {
       console.error("Failed to extend study set", err);
-      alert(`Extension failed: ${err.message}\n\nPlease check your API key and file format.`);
+      toast.error("Extension failed", `Error: ${err.message}. Please check your API key.`);
     } finally {
       setIsGenerating(null);
     }
@@ -206,8 +211,10 @@ export default function StudyCenter() {
     try {
       await saveStudySetLocally(newSet);
       setStudySets(prev => ({ ...prev, [fileId]: newSet }));
+      toast.success("Study Set Refreshed", "Reset back to the original 10 cards and 5 quiz questions.");
     } catch (err) {
       console.error("Failed to refresh study set", err);
+      toast.error("Refresh failed", "Could not write back to local browser DB.");
     }
   };
 
@@ -708,7 +715,7 @@ export default function StudyCenter() {
                           {isProcessing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
                           Extend
                         </button>
-                        <button onClick={() => { if(window.confirm('This will reset your study set back to the original 10 cards and 5 questions. Are you sure?')) refreshStudySet(file.id); }} disabled={isProcessing || isExpired || (flashCount <= 10 && quizCount <= 5)} className="flex-1 py-2.5 px-2 bg-white border border-slate-200 hover:bg-slate-50 hover:text-red-600 hover:border-red-200 text-slate-500 rounded-xl font-bold text-[11px] transition-all active:scale-95 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" title="Resets current set completely">
+                        <button onClick={() => setResetConfirmSetId(file.id)} disabled={isProcessing || isExpired || (flashCount <= 10 && quizCount <= 5)} className="flex-1 py-2.5 px-2 bg-white border border-slate-200 hover:bg-slate-50 hover:text-red-600 hover:border-red-200 text-slate-500 rounded-xl font-bold text-[11px] transition-all active:scale-95 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" title="Resets current set completely">
                           <RotateCcw size={13} />
                           Refresh
                         </button>
@@ -728,6 +735,42 @@ export default function StudyCenter() {
           </div>
         )}
       </div>
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Premium Confirm Reset Modal */}
+      {resetConfirmSetId && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-300 animate-in fade-in">
+          <div className="bg-white border border-slate-100 rounded-[32px] max-w-md w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500">
+              <RotateCcw size={28} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Reset Study Set</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                This will reset your study set back to the original 10 cards and 5 quiz questions. Are you sure you want to proceed?
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setResetConfirmSetId(null)}
+                className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-sm transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  refreshStudySet(resetConfirmSetId);
+                  setResetConfirmSetId(null);
+                }}
+                className="flex-1 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-indigo-200"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
