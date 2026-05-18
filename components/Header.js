@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Sun, Sunset, Moon, Lightbulb, CloudSnow } from "lucide-react";
+import { Sun, Sunset, Moon, Lightbulb } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -76,14 +76,6 @@ export default function Header() {
           <Lightbulb size={16} className="text-amber-400 shrink-0" />
           <p className="text-xs text-slate-500 font-medium italic leading-relaxed">{tip}</p>
         </div>
-      </div>
-
-      {/* Weather Widget — hidden on very small screens */}
-      <div className="hidden sm:flex glass p-4 sm:p-5 rounded-3xl flex-col items-center gap-1 shrink-0 w-20 sm:w-24">
-        <CloudSnow className="text-blue-300" size={28} />
-        <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-          Snowy
-        </span>
       </div>
     </div>
   );

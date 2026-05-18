@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle,
 } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, limit, getDocs, deleteDoc } from "firebase/firestore";
 
 /* ─── Reusable Input Field ───────────────────────────────────────── */
 function InputField({ label, id, type = "text", value, onChange, error, icon: Icon, suffix }) {
@@ -47,12 +48,23 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const isLoggingIn = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && !isLoggingIn.current) {
-        router.push("/dashboard");
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists() && userDoc.data().role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push("/dashboard");
+          }
+        } catch (e) {
+          console.error("Error checking role on auto-login:", e);
+          router.push("/dashboard");
+        }
       }
     });
     return () => unsubscribe();
@@ -91,43 +103,241 @@ export default function AuthPage() {
     setErrors(errs);
     if (Object.keys(errs).length === 0) {
       isLoggingIn.current = true;
+      setLoading(true);
+      let redirectPath = "/dashboard";
       try {
+        const emailQuery = form.email.trim().toLowerCase();
+
         if (mode === "login") {
-          await signInWithEmailAndPassword(auth, form.email, form.password);
+          try {
+            const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
+            const userDocRef = doc(db, "users", userCredential.user.uid);
+            const existingSnap = await getDoc(userDocRef);
+            
+            if (existingSnap.exists() && existingSnap.data().role === "admin") {
+              redirectPath = "/admin";
+            }
+            
+            if (!existingSnap.exists() || !existingSnap.data().status) {
+              // Legacy user (pre-admin-panel) — grant full approved access
+              await setDoc(userDocRef, {
+                uid: userCredential.user.uid,
+                email: userCredential.user.email || form.email,
+                displayName: userCredential.user.displayName || form.email.split('@')[0],
+                role: existingSnap.exists() ? (existingSnap.data().role || 'user') : 'user',
+                status: 'approved',
+                ...(!existingSnap.exists() ? { createdAt: serverTimestamp() } : {}),
+                lastLogin: serverTimestamp(),
+              }, { merge: true });
+            } else {
+              await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+            }
+          } catch (loginErr) {
+            const code = loginErr.code || "";
+            const expectedLoginCodes = ["auth/user-not-found", "auth/invalid-credential", "auth/wrong-password"];
+            if (!expectedLoginCodes.includes(code)) {
+              console.error("Login Error:", loginErr);
+            }
+            
+            if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+              // Double check in Firestore — the account may not exist at all
+              const q = query(
+                collection(db, "users"),
+                where("email", "==", emailQuery),
+                limit(1)
+              );
+              const snap = await getDocs(q);
+              
+              if (snap.empty) {
+                setErrors({ email: "No account found with this email. Please register first." });
+              } else {
+                setErrors({ password: "Incorrect password. Please try again." });
+              }
+              isLoggingIn.current = false;
+              setLoading(false);
+              return;
+            } else if (code === "auth/wrong-password") {
+              setErrors({ password: "Incorrect password. Please try again." });
+              isLoggingIn.current = false;
+              setLoading(false);
+              return;
+            } else {
+              throw loginErr;
+            }
+          }
         } else {
-          const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
-          await updateProfile(userCredential.user, {
-            displayName: `${form.firstName.trim()} ${form.lastName.trim()}`
-          });
-          // Dispatch event so Profile component knows to re-render with the new displayName
-          window.dispatchEvent(new Event('profileUpdated'));
+          // Register Mode
+          try {
+            const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+            
+            // Clean up any legacy Firestore documents for this email with a different UID
+            const q = query(
+              collection(db, "users"),
+              where("email", "==", emailQuery)
+            );
+            const snap = await getDocs(q);
+            
+            // If any duplicate doc exists with a different UID, delete them to maintain database purity
+            const batchPromises = [];
+            snap.forEach((docSnap) => {
+              if (docSnap.id !== userCredential.user.uid) {
+                batchPromises.push(deleteDoc(docSnap.ref));
+              }
+            });
+            if (batchPromises.length > 0) {
+              await Promise.all(batchPromises);
+            }
+
+            await updateProfile(userCredential.user, {
+              displayName: `${form.firstName.trim()} ${form.lastName.trim()}`
+            });
+            
+            await setDoc(doc(db, "users", userCredential.user.uid), {
+              uid: userCredential.user.uid,
+              email: emailQuery, // Always store lowercase for consistent querying
+              displayName: `${form.firstName.trim()} ${form.lastName.trim()}`,
+              role: 'user',
+              status: 'pending',
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp()
+            });
+
+            // Dispatch event so Profile component knows to re-render with the new displayName
+            window.dispatchEvent(new Event('profileUpdated'));
+          } catch (regErr) {
+            const code = regErr.code || "";
+            if (code !== "auth/email-already-in-use") {
+              console.error("Registration Error:", regErr);
+            }
+            if (code === "auth/email-already-in-use") {
+              // Check Firestore — if no document exists, this is an orphaned Firebase Auth account
+              // (user deleted Firestore doc but didn't delete the Auth account)
+              const checkQ = query(
+                collection(db, "users"),
+                where("email", "==", emailQuery),
+                limit(1)
+              );
+              const checkSnap = await getDocs(checkQ);
+
+              if (checkSnap.empty) {
+                // Orphaned Auth account — Firestore doc was deleted but Auth account remains
+                setErrors({
+                  email: "This email is linked to an old deleted account. To re-register, go to Firebase Console → Authentication → Users and delete this email first, then try again."
+                });
+              } else {
+                // Genuine existing account — both Auth and Firestore exist
+                setErrors({ email: "An account with this email already exists. Please login instead." });
+              }
+              isLoggingIn.current = false;
+              setLoading(false);
+              return;
+            } else {
+              throw regErr;
+            }
+          }
         }
         setSubmitted(true);
-        setTimeout(() => router.push("/dashboard"), 1200);
+        setLoading(false);
+        setTimeout(() => router.push(redirectPath), 1200);
       } catch (err) {
         isLoggingIn.current = false;
-        const cleanError = err.message.replace('Firebase: ', '').replace(/\(auth.*\)\./, '');
-        // Attach generic error to email field to display it
-        setErrors({ email: cleanError });
+        setLoading(false);
+        
+        const code = err.code || "";
+        const expectedCodes = [
+          "auth/wrong-password",
+          "auth/invalid-credential",
+          "auth/email-already-in-use",
+          "auth/weak-password",
+          "auth/invalid-email",
+          "auth/user-not-found"
+        ];
+        if (!expectedCodes.includes(code)) {
+          console.error("Authentication Error:", err);
+        }
+        
+        let customMsg = "An unexpected error occurred. Please try again.";
+        
+        if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+          customMsg = "Incorrect password. Please try again.";
+          setErrors({ password: customMsg });
+          return;
+        } else if (code === "auth/email-already-in-use") {
+          customMsg = "This email is already in use. Please sign in instead.";
+        } else if (code === "auth/weak-password") {
+          customMsg = "Password should be at least 6 characters long.";
+          setErrors({ password: customMsg });
+          return;
+        } else if (code === "auth/invalid-email") {
+          customMsg = "Please enter a valid email address.";
+        } else {
+          customMsg = err.message.replace('Firebase: ', '').replace(/\(auth.*\)\./, '');
+        }
+
+        setErrors({ email: customMsg });
       }
     }
   }
 
   async function handleGoogleAuth() {
     isLoggingIn.current = true;
+    setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      
+      const userDocRef = doc(db, "users", userCredential.user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      let redirectPath = "/dashboard";
+      if (userDoc.exists() && userDoc.data().role === "admin") {
+        redirectPath = "/admin";
+      }
+
+      if (!userDoc.exists()) {
+        // Brand new Google user — pending approval
+        await setDoc(userDocRef, {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          displayName: userCredential.user.displayName,
+          avatar: userCredential.user.photoURL || null,
+          role: 'user',
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp()
+        });
+      } else if (!userDoc.data().status) {
+        // Legacy Google user — no status yet, grant approved access
+        await setDoc(userDocRef, {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          displayName: userCredential.user.displayName,
+          avatar: userCredential.user.photoURL || null,
+          role: userDoc.data().role || 'user',
+          status: 'approved',
+          lastLogin: serverTimestamp()
+        }, { merge: true });
+      } else {
+        await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+      }
+
       setSubmitted(true);
+      setLoading(false);
       window.dispatchEvent(new Event('profileUpdated'));
-      setTimeout(() => router.push("/dashboard"), 1200);
+      setTimeout(() => router.push(redirectPath), 1200);
     } catch (err) {
       isLoggingIn.current = false;
-      console.error("Google Auth Error:", err);
+      setLoading(false);
+      
+      const code = err.code || "";
+      if (code !== "auth/popup-closed-by-user") {
+        console.error("Google Auth Error:", err);
+      }
+      
       let cleanError = err.message;
-      if (err.code === 'auth/popup-closed-by-user') {
+      if (code === 'auth/popup-closed-by-user') {
         cleanError = "Sign-in cancelled.";
-      } else if (err.code === 'auth/operation-not-allowed') {
+      } else if (code === 'auth/operation-not-allowed') {
         cleanError = "Google Sign-In is not enabled in Firebase Console.";
       } else {
         cleanError = err.message.replace('Firebase: ', '').replace(/\(auth.*\)\./, '').trim();
@@ -170,7 +380,21 @@ export default function AuthPage() {
         </Link>
 
         {/* Card */}
-        <div className="bg-white/80 backdrop-blur-xl border border-white/90 rounded-3xl shadow-2xl shadow-slate-200/70 p-8 sm:p-10">
+        <div className="bg-white/80 backdrop-blur-xl border border-white/90 rounded-3xl shadow-2xl shadow-slate-200/70 p-8 sm:p-10 relative overflow-hidden">
+
+          {loading && (
+            <div className="absolute inset-0 z-50 bg-white/70 backdrop-blur-[6px] rounded-3xl flex flex-col items-center justify-center transition-all duration-300">
+              <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-4 border-indigo-100 animate-pulse" />
+                  <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+                </div>
+                <p className="font-bold text-slate-800 text-sm animate-pulse tracking-wide uppercase font-sans">
+                  {mode === "login" ? "Signing In..." : "Creating Account..."}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Tab switcher */}
           <div className="flex bg-slate-100 rounded-2xl p-1 mb-8">

@@ -7,6 +7,7 @@ import {
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, query, where, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { useToast, ToastContainer } from "@/components/Toast";
 
 const tagColors = {
   Reading: "bg-indigo-100 text-indigo-700",
@@ -58,6 +59,8 @@ export default function Tasks() {
   const [isMounted, setIsMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false); // Custom confirmation modal state
+  const { toasts, toast, dismissToast } = useToast();
 
   // New Task State
   const [newTaskName, setNewTaskName] = useState("");
@@ -183,14 +186,17 @@ export default function Tasks() {
       createdAt: serverTimestamp()
     };
     
+    const originalName = newTaskName;
     setNewTaskName("");
     setNewTaskDue("");
     
     try {
       await addDoc(collection(db, "tasks"), taskData);
       setActiveTab("Active");
+      toast.success("Task Created!", `Successfully added "${originalName}".`);
     } catch (err) {
       console.error("Error adding task:", err);
+      toast.error("Add task failed", err.message);
     }
   }
 
@@ -198,33 +204,52 @@ export default function Tasks() {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    const newStatus = !task.completed;
+    setTasks(tasks.map(t => t.id === id ? { ...t, completed: newStatus } : t));
     
     try {
-      await updateDoc(doc(db, "tasks", id), { completed: !task.completed });
+      await updateDoc(doc(db, "tasks", id), { completed: newStatus });
+      if (newStatus) {
+        toast.success("Task Completed!", `Great job finishing "${task.name}"!`);
+      } else {
+        toast.success("Task Re-activated", `"${task.name}" is back in active tasks.`);
+      }
     } catch (err) {
       console.error("Error updating task:", err);
       setTasks(tasks.map(t => t.id === id ? { ...t, completed: task.completed } : t));
+      toast.error("Failed to update task", err.message);
     }
   }
 
   async function deleteTask(id) {
+    const task = tasks.find(t => t.id === id);
     const previousTasks = [...tasks];
     setTasks(tasks.filter(t => t.id !== id));
     
     try {
       await deleteDoc(doc(db, "tasks", id));
+      if (task) {
+        toast.success("Task Deleted", `"${task.name}" has been removed.`);
+      }
     } catch (err) {
       console.error("Error deleting task:", err);
       setTasks(previousTasks);
+      toast.error("Failed to delete task", err.message);
     }
   }
 
   async function clearCompleted() {
-    if (!window.confirm("Are you sure you want to delete all completed tasks?")) return;
+    setClearConfirmOpen(true);
+  }
+
+  async function executeClearCompleted() {
     const completedTasks = tasks.filter(t => t.completed);
-    if (completedTasks.length === 0) return;
+    if (completedTasks.length === 0) {
+      setClearConfirmOpen(false);
+      return;
+    }
     
+    const originalTasks = [...tasks];
     setTasks(tasks.filter(t => !t.completed));
     
     try {
@@ -234,8 +259,13 @@ export default function Tasks() {
         batch.delete(ref);
       });
       await batch.commit();
+      toast.success("Completed Tasks Cleared!", `Removed ${completedTasks.length} completed tasks.`);
     } catch (err) {
       console.error("Error clearing completed:", err);
+      setTasks(originalTasks);
+      toast.error("Failed to clear tasks", err.message);
+    } finally {
+      setClearConfirmOpen(false);
     }
   }
 
@@ -260,9 +290,11 @@ export default function Tasks() {
         due: editDue,
         priority: editPriority
       });
+      toast.success("Task Updated", "Changes saved successfully.");
     } catch (err) {
       console.error("Error saving edit:", err);
       setTasks(previousTasks);
+      toast.error("Failed to update task", err.message);
     }
   }
 
@@ -730,6 +762,39 @@ export default function Tasks() {
           </div>
         </div>
       </div>
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Premium Confirm Clear Completed Tasks Modal */}
+      {clearConfirmOpen && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-300 animate-in fade-in">
+          <div className="bg-white border border-slate-100 rounded-[32px] max-w-md w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500">
+              <Trash2 size={28} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800">Clear Completed Tasks</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Are you sure you want to permanently clear all completed tasks from your list? This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setClearConfirmOpen(false)}
+                className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-sm transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeClearCompleted}
+                className="flex-1 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-indigo-200"
+              >
+                Clear Tasks
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

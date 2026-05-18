@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home, Sparkles, BookOpen, CheckSquare,
-  Layout, Settings, Cloud, ChevronRight, ChevronLeft, X
+  Layout, Settings, Cloud, ChevronRight, ChevronLeft, X, ShieldCheck, TrendingUp
 } from 'lucide-react';
 
 export default function Sidebar({
@@ -12,16 +12,25 @@ export default function Sidebar({
   setIsExpanded,
   isMobileDrawer = false,
   onClose,
+  userRole,
 }) {
   const pathname = usePathname();
 
-  const navItems = [
-    { icon: Home, path: '/dashboard', label: 'Home' },
-    { icon: Sparkles, path: '/ai', label: 'AI' },
-    { icon: BookOpen, path: '/library', label: 'Library' },
-    { icon: Layout, path: '/study', label: 'Study' },
-    { icon: CheckSquare, path: '/tasks', label: 'Tasks' },
-  ];
+  const isAdminRoute = pathname.startsWith('/admin') || userRole === 'admin';
+
+  const navItems = isAdminRoute
+    ? [
+        { icon: ShieldCheck, path: '/admin', label: 'Admin Dashboard', isAdmin: true },
+        { icon: TrendingUp, path: '/admin/analytics', label: 'Analytics', isAdmin: true },
+      ]
+    : [
+        { icon: Home, path: '/dashboard', label: 'Home' },
+        { icon: Sparkles, path: '/ai', label: 'AI' },
+        { icon: BookOpen, path: '/library', label: 'Library' },
+        { icon: Layout, path: '/study', label: 'Study' },
+        { icon: CheckSquare, path: '/tasks', label: 'Tasks' },
+        ...(userRole === 'admin' ? [{ icon: ShieldCheck, path: '/admin', label: 'Admin', isAdmin: true }] : []),
+      ];
 
   // In the mobile drawer the sidebar is always "expanded"
   const expanded = isMobileDrawer ? true : isExpanded;
@@ -77,7 +86,7 @@ export default function Sidebar({
         className={`flex flex-col gap-3 flex-1 w-full overflow-y-auto overflow-x-hidden scrollbar-hide pr-1 ${expanded ? 'items-stretch' : 'items-center'}`}
       >
         {navItems.map((item) => {
-          const isActive = pathname === item.path;
+          const isActive = item.path === '/admin' ? pathname === '/admin' : pathname === item.path;
           return (
             <Link
               key={item.path}
@@ -90,9 +99,13 @@ export default function Sidebar({
                 className={`
                   flex items-center p-3 rounded-2xl transition-all duration-500 w-full overflow-hidden
                   group-focus-visible:ring-2 group-focus-visible:ring-indigo-200
-                  ${isActive
-                    ? 'bg-indigo-50/80 shadow-sm text-indigo-600 border border-indigo-100/60'
-                    : 'text-slate-500 hover:bg-white/60 hover:text-indigo-500'
+                  ${item.isAdmin
+                    ? isActive
+                      ? 'bg-violet-50/80 shadow-sm text-violet-600 border border-violet-100/60'
+                      : 'text-slate-500 hover:bg-violet-50/60 hover:text-violet-500'
+                    : isActive
+                      ? 'bg-indigo-50/80 shadow-sm text-indigo-600 border border-indigo-100/60'
+                      : 'text-slate-500 hover:bg-white/60 hover:text-indigo-500'
                   } 
                   ${expanded ? 'px-4 justify-start gap-4' : 'justify-center w-12 h-12 gap-0'}
                 `}
@@ -113,8 +126,14 @@ export default function Sidebar({
           href="/settings"
           aria-label="Settings"
           className={`
-            group flex items-center w-full p-3 text-slate-500 hover:bg-white/40 hover:shadow-sm hover:text-indigo-600 border border-transparent hover:border-white/50 transition-all duration-500 cursor-pointer rounded-2xl shrink-0 overflow-hidden
+            group flex items-center w-full p-3 border transition-all duration-500 cursor-pointer rounded-2xl shrink-0 overflow-hidden
             outline-none focus-visible:ring-2 focus-visible:ring-indigo-100
+            ${pathname === '/settings'
+              ? userRole === 'admin'
+                ? 'bg-violet-50/80 shadow-sm text-violet-600 border-violet-100/60'
+                : 'bg-indigo-50/80 shadow-sm text-indigo-600 border-indigo-100/60'
+              : 'text-slate-500 hover:bg-white/40 hover:shadow-sm hover:text-indigo-600 border-transparent hover:border-white/50'
+            }
             ${expanded ? 'px-4 justify-start gap-4' : 'justify-center w-12 h-12 gap-0'}
           `}
         >

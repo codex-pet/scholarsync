@@ -11,7 +11,6 @@ import Link from "next/link";
 import { loadFilesLocally, loadStudySetsLocally } from "../../lib/indexeddb";
 import SearchArea from "@/components/SearchArea";
 import TaskList from "@/components/TaskList";
-import AIAssistant from "@/components/AIAssistant";
 
 export default function Dashboard() {
   const [files, setFiles] = useState([]);
@@ -266,14 +265,6 @@ export default function Dashboard() {
               <CheckSquare className="text-emerald-500" size={22} /> Today&apos;s Tasks
             </h2>
             <TaskList />
-          </section>
-
-          {/* Quick AI Help */}
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <Sparkles className="text-indigo-400" size={22} /> Quick AI Help
-            </h2>
-            <AIAssistant />
           </section>
         </div>
 
