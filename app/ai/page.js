@@ -12,6 +12,7 @@ import { saveFileLocally, loadFilesLocally, saveChatSession, loadChatSession, de
 import { generateGroqResponse } from '../../lib/groq';
 import Link from 'next/link';
 import { Document, Page, pdfjs } from 'react-pdf';
+import DocumentViewer from '@/components/DocumentViewer';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -694,6 +695,13 @@ export default function AIWorkspace() {
                 <button onClick={() => setPdfScale(s => Math.min(3.0, s + 0.2))} className="p-1.5 bg-white hover:bg-slate-50 text-slate-500 rounded-lg shadow-sm transition-colors" title="Zoom In">
                   <ZoomIn size={16} />
                 </button>
+                <a 
+                  href={previewUrl} 
+                  download={previewFile.name}
+                  className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-indigo-600 font-bold text-xs uppercase tracking-wider shrink-0 transition-colors border border-indigo-100"
+                >
+                  Download
+                </a>
                 <button 
                   onClick={closePreview} 
                   className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-500 font-bold text-xs uppercase tracking-wider shrink-0 transition-colors"
@@ -712,7 +720,7 @@ export default function AIWorkspace() {
                   <div className="w-full h-full p-4 flex justify-center items-start">
                     <img src={previewUrl} alt="preview" className="max-w-full rounded-lg shadow-sm border border-slate-200" />
                   </div>
-                ) : (
+                ) : previewFile.type === 'pdf' ? (
                   <div className="flex flex-col items-center py-6 relative">
                     <Document
                       file={previewUrl}
@@ -753,6 +761,8 @@ export default function AIWorkspace() {
                       </div>
                     )}
                   </div>
+                ) : (
+                   <DocumentViewer fileToView={{ url: previewUrl, name: previewFile.name }} />
                 )
               ) : (
                  <div className="w-full h-full flex items-center justify-center text-slate-400 font-medium">Preview not available</div>

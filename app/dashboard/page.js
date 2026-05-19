@@ -9,8 +9,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { loadFilesLocally, loadStudySetsLocally } from "../../lib/indexeddb";
-import SearchArea from "@/components/SearchArea";
-import TaskList from "@/components/TaskList";
 
 export default function Dashboard() {
   const [files, setFiles] = useState([]);
@@ -49,7 +47,6 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-10 xl:p-12 space-y-6 sm:space-y-8 lg:space-y-10 max-w-7xl mx-auto">
       <Header />
-      <SearchArea />
 
       {/* ── STATS CARDS ── */}
       {!loading && (
@@ -256,15 +253,48 @@ export default function Dashboard() {
               <div className="flex justify-center py-2">
                 <ProgressRing />
               </div>
+
+              <Link href="/study" className="w-full mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white py-3.5 rounded-2xl font-bold text-sm shadow-md hover:shadow-lg transition-all group/btn">
+                Go to Study Center <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+              </Link>
             </div>
           </section>
 
-          {/* Today's Tasks */}
+          {/* Quick Navigation */}
           <section className="space-y-4">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <CheckSquare className="text-emerald-500" size={22} /> Today&apos;s Tasks
-            </h2>
-            <TaskList />
+            <h2 className="text-xl font-bold text-slate-800">Quick Navigation</h2>
+            <div className="space-y-3">
+              <Link href="/library" className="flex items-center gap-4 bg-white/40 backdrop-blur-xl border border-white/60 p-4 rounded-[1.5rem] hover:bg-white/60 hover:shadow-sm transition-all group">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <LibraryBig size={18} className="text-indigo-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-slate-800 text-sm">My Library</h3>
+                  <p className="text-xs text-slate-400 font-medium">{files.length} file{files.length !== 1 ? 's' : ''} uploaded</p>
+                </div>
+                <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+              </Link>
+              <Link href="/study" className="flex items-center gap-4 bg-white/40 backdrop-blur-xl border border-white/60 p-4 rounded-[1.5rem] hover:bg-white/60 hover:shadow-sm transition-all group">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <BrainCircuit size={18} className="text-purple-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-slate-800 text-sm">Study Center</h3>
+                  <p className="text-xs text-slate-400 font-medium">{studySets.length} study set{studySets.length !== 1 ? 's' : ''} ready</p>
+                </div>
+                <ChevronRight size={16} className="text-slate-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+              </Link>
+              <Link href="/tasks" className="flex items-center gap-4 bg-[#EAF5E4]/50 backdrop-blur-xl border border-[#C8E6C9] p-4 rounded-[1.5rem] hover:bg-[#EAF5E4]/80 hover:shadow-sm transition-all group">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <TrendingUp size={18} className="text-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-slate-800 text-sm">Task List</h3>
+                  <p className="text-xs text-slate-400 font-medium">Manage your to-do&apos;s</p>
+                </div>
+                <ChevronRight size={16} className="text-slate-300 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+              </Link>
+            </div>
           </section>
         </div>
 

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { loadFilesLocally, loadStudySetsLocally, saveStudySetLocally, deleteStudySetLocally } from "../../lib/indexeddb";
 import { generateGroqResponse } from "../../lib/groq";
-import { Flame, Target, TrendingUp, BookOpen, Zap, Loader2, FileText, CheckCircle, XCircle, ChevronRight, ChevronLeft, ArrowLeft, RefreshCw, LibraryBig, Shuffle, ThumbsUp, ThumbsDown, Trash2, Search, SlidersHorizontal, Award, RotateCcw } from "lucide-react";
+import { Flame, Target, TrendingUp, BookOpen, Zap, Loader2, FileText, CheckCircle, XCircle, ChevronRight, ChevronLeft, ArrowLeft, RefreshCw, LibraryBig, Shuffle, ThumbsUp, ThumbsDown, Trash2, Search, SlidersHorizontal, Award, RotateCcw, GripHorizontal } from "lucide-react";
 import { useToast, ToastContainer } from "@/components/Toast";
 
 // Shuffle array (Fisher-Yates)
@@ -38,7 +38,9 @@ export default function StudyCenter() {
 
   // Search & sort
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('name'); // 'name' | 'mastery' | 'date'
+  const [sortBy, setSortBy] = useState('custom'); // 'custom' | 'name' | 'mastery' | 'date'
+  const [customOrder, setCustomOrder] = useState([]);
+  const [draggedId, setDraggedId] = useState(null);
 
   // Flashcard states
   const [cardIndex, setCardIndex] = useState(0);
@@ -67,6 +69,11 @@ export default function StudyCenter() {
         localSets.forEach(s => { setsMap[s.fileId] = s; });
         setFiles(localFiles);
         setStudySets(setsMap);
+
+        const order = JSON.parse(localStorage.getItem('ss_custom_order'));
+        if (Array.isArray(order)) {
+          setCustomOrder(order);
+        }
       } catch (err) { console.error("Error loading data from DB", err); }
     }
     loadData();
@@ -86,6 +93,14 @@ export default function StudyCenter() {
     .sort((a, b) => {
       if (sortBy === 'mastery') return (studySets[b.id]?.mastery || 0) - (studySets[a.id]?.mastery || 0);
       if (sortBy === 'date') return (studySets[b.id]?.createdAt || 0) - (studySets[a.id]?.createdAt || 0);
+      if (sortBy === 'custom') {
+         const idxA = customOrder.indexOf(a.id);
+         const idxB = customOrder.indexOf(b.id);
+         if (idxA === -1 && idxB === -1) return 0;
+         if (idxA === -1) return 1;
+         if (idxB === -1) return -1;
+         return idxA - idxB;
+      }
       return a.name.localeCompare(b.name);
     });
 
@@ -696,6 +711,7 @@ export default function StudyCenter() {
               onChange={e => setSortBy(e.target.value)}
               className="text-sm font-bold text-slate-600 bg-transparent outline-none cursor-pointer"
             >
+              <option value="custom">Custom Order</option>
               <option value="name">Name</option>
               <option value="mastery">Mastery</option>
               <option value="date">Date Created</option>
@@ -728,10 +744,39 @@ export default function StudyCenter() {
               const lastStudied = studySet?.lastStudied ? new Date(studySet.lastStudied).toLocaleDateString([], { month: 'short', day: 'numeric' }) : null;
 
               return (
-                <div key={file.id} className="bg-white/50 backdrop-blur-xl border border-white/80 shadow-sm hover:shadow-lg transition-all duration-300 rounded-[28px] p-6 flex flex-col gap-4 group hover:-translate-y-0.5 animate-in fade-in duration-300">
+                <div 
+                  key={file.id} 
+                  draggable={true}
+                  onDragStart={(e) => { setDraggedId(file.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (!draggedId || draggedId === file.id) return;
+                    
+                    const currentOrder = displayedFiles.map(f => f.id);
+                    const fromIdx = currentOrder.indexOf(draggedId);
+                    const toIdx = currentOrder.indexOf(file.id);
+                    
+                    const newOrder = [...currentOrder];
+                    newOrder.splice(fromIdx, 1);
+                    newOrder.splice(toIdx, 0, draggedId);
+                    
+                    // merge with existing custom order for items not currently displayed
+                    const finalOrder = [...new Set([...newOrder, ...customOrder, ...files.map(f=>f.id)])];
+                    setCustomOrder(finalOrder);
+                    localStorage.setItem('ss_custom_order', JSON.stringify(finalOrder));
+                    setSortBy('custom');
+                    setDraggedId(null);
+                  }}
+                  onDragEnd={() => setDraggedId(null)}
+                  className={`bg-white/50 backdrop-blur-xl border border-white/80 shadow-sm hover:shadow-lg transition-all duration-300 rounded-[28px] p-6 flex flex-col gap-4 group hover:-translate-y-0.5 animate-in fade-in duration-300 cursor-grab active:cursor-grabbing ${draggedId === file.id ? 'opacity-50 scale-95 border-indigo-300' : ''}`}
+                >
 
                   {/* Card Header */}
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 relative">
+                    <div className="absolute -top-4 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-indigo-400">
+                      <GripHorizontal size={18} />
+                    </div>
                     <div className="p-2.5 bg-indigo-50 text-indigo-500 rounded-xl shrink-0 mt-0.5">
                       <FileText size={20} />
                     </div>
