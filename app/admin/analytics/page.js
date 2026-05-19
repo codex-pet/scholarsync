@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, writeBatch, doc, serverTimestamp } from "firebase/firestore";
 import {
   Users, TrendingUp, Sparkles, Clock, Search, Mail, Calendar,
   ChevronDown, RefreshCw, AlertCircle, Award, Send, Hourglass,
@@ -17,7 +17,119 @@ export default function AdminAnalyticsPage() {
   const [sortBy, setSortBy] = useState("hours"); // "hours" | "streak" | "decks" | "tasks"
   const [hoveredLineNode, setHoveredLineNode] = useState(null); // Node index
   const [activeDonutSegment, setActiveDonutSegment] = useState(null); // Category label
+  const [expandedStudentId, setExpandedStudentId] = useState(null);
+  const [seeding, setSeeding] = useState(false);
   const { toasts, toast, dismissToast } = useToast();
+
+  const seedSampleTasks = async () => {
+    if (users.length === 0) {
+      toast.error("No registered students found to seed tasks for.");
+      return;
+    }
+    setSeeding(true);
+    toast.success("Seeding Tasks...", "Creating realistic study logs for all students...");
+    try {
+      const batch = writeBatch(db);
+      
+      // Define a standard set of 6 realistic academic tasks with relative dates
+      const taskTemplates = [
+        {
+          name: "Complete Biology Lab Report 4",
+          tag: "Assignment",
+          priority: "High",
+          completed: false,
+          notes: "Need to structure findings, include diagrams, and cite sources.",
+          daysOffset: 1, // due in 1 day
+          createdOffset: -2, // created 2 days ago
+        },
+        {
+          name: "Read Chapter 5 of Sociology Textbook",
+          tag: "Reading",
+          priority: "Low",
+          completed: true,
+          notes: "Summarized key terms on social stratification.",
+          daysOffset: 3, // due in 3 days
+          createdOffset: -4, // created 4 days ago
+        },
+        {
+          name: "Prepare slides for Chemistry group presentation",
+          tag: "Project",
+          priority: "High",
+          completed: false,
+          notes: "Include sections on molecular bonds and thermodynamic laws.",
+          daysOffset: 2, // due in 2 days
+          createdOffset: -1, // created 1 day ago
+        },
+        {
+          name: "Math Quiz 3 Review Notes",
+          tag: "Study",
+          priority: "Medium",
+          completed: true,
+          notes: "Review integrals and derivative proofs.",
+          daysOffset: 0, // due today
+          createdOffset: -3, // created 3 days ago
+        },
+        {
+          name: "Submit English Essay Outline",
+          tag: "Assignment",
+          priority: "Medium",
+          completed: true,
+          notes: "Focusing on the themes of post-colonialism.",
+          daysOffset: -3, // due 3 days ago
+          createdOffset: -6, // created 6 days ago
+        },
+        {
+          name: "Revise French Vocab list for Midterm",
+          tag: "Study",
+          priority: "Low",
+          completed: false,
+          notes: "Study unit 4 verbs and sentence conjugation.",
+          daysOffset: 4, // due in 4 days
+          createdOffset: -2, // created 2 days ago
+        }
+      ];
+
+      users.forEach(u => {
+        taskTemplates.forEach(template => {
+          // Calculate due date string YYYY-MM-DD
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + template.daysOffset);
+          const dueStr = dueDate.toISOString().split('T')[0];
+
+          // Calculate creation date
+          const createdDate = new Date();
+          createdDate.setDate(createdDate.getDate() + template.createdOffset);
+          
+          // Randomize hour slightly to create an appealing peak study times chart
+          const randomHour = [9, 10, 14, 15, 19, 20, 21, 23][Math.floor(Math.random() * 8)];
+          createdDate.setHours(randomHour, Math.floor(Math.random() * 60));
+
+          // Generate a new document reference in the "tasks" collection
+          const taskRef = doc(collection(db, "tasks"));
+          
+          batch.set(taskRef, {
+            name: template.name,
+            tag: template.tag,
+            priority: template.priority,
+            completed: template.completed,
+            notes: template.notes,
+            due: dueStr,
+            userId: u.uid,
+            createdAt: createdDate // Custom date to distribute history graphs
+          });
+        });
+      });
+
+      await batch.commit();
+      toast.success("Tasks Seeded Successfully!", `Generated study logs for ${users.length} students.`);
+      await fetchUsersAndTasks();
+    } catch (e) {
+      console.error("Error seeding tasks:", e);
+      toast.error("Failed to seed sample tasks.", e.message);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const fetchUsersAndTasks = useCallback(async () => {
     setLoading(true);
@@ -34,7 +146,7 @@ export default function AdminAnalyticsPage() {
 
       // 3. Map tasks to users to calculate true platform metrics
       const processedUsers = fetchedUsers.map(user => {
-        const userTasks = fetchedTasks.filter(t => t.userId === user.uid);
+        const userTasks = fetchedTasks.filter(t => t.userId === user.uid || t.userId === user.id);
         const total = userTasks.length;
         const completed = userTasks.filter(t => t.completed === true || t.completed === "true" || t.completed === 1).length;
         const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -385,13 +497,24 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
 
-        <button
-          onClick={fetchUsersAndTasks}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all duration-200 shadow-sm cursor-pointer"
-        >
-          <RefreshCw size={14} className={loading ? "animate-spin text-indigo-500" : ""} />
-          Refresh Stats
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={seedSampleTasks}
+            disabled={seeding || loading}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm hover:shadow-lg hover:shadow-amber-100 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 border-0 cursor-pointer disabled:opacity-50"
+          >
+            <Sparkles size={14} className={seeding ? "animate-spin" : ""} />
+            {seeding ? "Seeding..." : "Seed Sample Tasks"}
+          </button>
+
+          <button
+            onClick={fetchUsersAndTasks}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all duration-200 shadow-sm cursor-pointer"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin text-indigo-500" : ""} />
+            Refresh Stats
+          </button>
+        </div>
       </div>
 
       {/* ── Core Academic Indicators Grid ── */}
@@ -763,77 +886,154 @@ export default function AdminAnalyticsPage() {
                 processedStudents.map(student => {
                   const initials = (student.displayName || student.email || "?")
                     .split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+                  const studentTasks = allTasks.filter(t => t.userId === student.uid || t.userId === student.id);
                   return (
-                    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-                      {/* Avatar & Display Name */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0">
-                            {initials}
+                    <Fragment key={student.id}>
+                      <tr className={`hover:bg-slate-50/50 transition-colors ${expandedStudentId === student.id ? 'bg-slate-50/80' : ''}`}>
+                        {/* Avatar & Display Name */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-800 text-sm leading-tight">{student.displayName || "—"}</p>
+                              <p className="text-[10px] text-slate-400 font-bold tracking-tight uppercase mt-0.5">{student.totalHours} hours studied</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-800 text-sm leading-tight">{student.displayName || "—"}</p>
-                            <p className="text-[10px] text-slate-400 font-bold tracking-tight uppercase mt-0.5">{student.totalHours} hours studied</p>
+                        </td>
+
+                        {/* Email */}
+                        <td className="px-6 py-4">
+                          <span className="text-xs text-slate-500 font-medium">{student.email}</span>
+                        </td>
+
+                        {/* Decks Created */}
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-xs font-bold text-slate-700">{student.decksCreated}</span>
+                        </td>
+
+                        {/* Tasks Completed */}
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-xs font-bold text-slate-700">{student.tasksCompleted}</span>
+                        </td>
+
+                        {/* Task Success Progress */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden border border-white">
+                              <div 
+                                className="h-full rounded-full"
+                                style={{ 
+                                  width: `${student.completionRate}%`,
+                                  backgroundColor: student.completionRate > 75 ? "#10b981" : student.completionRate > 50 ? "#6366f1" : "#f59e0b"
+                                }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-500">{student.completionRate}%</span>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Email */}
-                      <td className="px-6 py-4">
-                        <span className="text-xs text-slate-500 font-medium">{student.email}</span>
-                      </td>
+                        {/* Streak */}
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-extrabold border ${student.streak > 7 ? 'bg-pink-50 text-pink-700 border-pink-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                            {student.streak} days
+                          </span>
+                        </td>
 
-                      {/* Decks Created */}
-                      <td className="px-6 py-4 text-center">
-                        <span className="text-xs font-bold text-slate-700">{student.decksCreated}</span>
-                      </td>
+                        {/* Last Active */}
+                        <td className="px-6 py-4">
+                          <span className={`text-xs font-bold ${student.lastActiveDays === 0 ? 'text-emerald-500' : student.lastActiveDays > 5 ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {student.lastActiveText}
+                          </span>
+                        </td>
 
-                      {/* Tasks Completed */}
-                      <td className="px-6 py-4 text-center">
-                        <span className="text-xs font-bold text-slate-700">{student.tasksCompleted}</span>
-                      </td>
-
-                      {/* Task Success Progress */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden border border-white">
-                            <div 
-                              className="h-full rounded-full"
-                              style={{ 
-                                width: `${student.completionRate}%`,
-                                backgroundColor: student.completionRate > 75 ? "#10b981" : student.completionRate > 50 ? "#6366f1" : "#f59e0b"
-                              }}
-                            />
+                        {/* Actions */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => sendOutreachReminder(student)}
+                              className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 text-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center cursor-pointer"
+                              title="Send academic reminder notification"
+                            >
+                              <Send size={12} />
+                            </button>
+                            <button
+                              onClick={() => setExpandedStudentId(expandedStudentId === student.id ? null : student.id)}
+                              className={`p-2 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
+                                expandedStudentId === student.id
+                                  ? 'bg-indigo-100 border-indigo-200 text-indigo-600'
+                                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                              }`}
+                              title="View student tasks"
+                            >
+                              <ChevronDown size={12} className={`transition-transform duration-200 ${expandedStudentId === student.id ? "rotate-180" : ""}`} />
+                            </button>
                           </div>
-                          <span className="text-[11px] font-bold text-slate-500">{student.completionRate}%</span>
-                        </div>
-                      </td>
+                        </td>
+                      </tr>
 
-                      {/* Streak */}
-                      <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-extrabold border ${student.streak > 7 ? 'bg-pink-50 text-pink-700 border-pink-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                          {student.streak} days
-                        </span>
-                      </td>
+                      {expandedStudentId === student.id && (
+                        <tr className="bg-slate-50/40">
+                          <td colSpan={8} className="px-8 py-6 border-t border-b border-slate-100">
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                  <CheckSquare size={14} /> {student.displayName || "Student"}&apos;s Active & Completed Tasks
+                                </h4>
+                                <span className="text-[10px] text-slate-400 font-bold bg-white px-2.5 py-1 rounded-full border border-slate-100">
+                                  {studentTasks.length} Total Tasks
+                                </span>
+                              </div>
+                              
+                              {studentTasks.length === 0 ? (
+                                <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-sm text-center">
+                                  <p className="text-xs text-slate-400 font-medium">No tasks logged by this student yet.</p>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {studentTasks.map(t => (
+                                    <div key={t.id} className="bg-white p-4.5 rounded-2xl border border-slate-150 shadow-sm flex flex-col gap-2.5 hover:shadow-md transition-shadow">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <p className="font-bold text-slate-800 text-xs leading-snug line-clamp-2">{t.name}</p>
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase border shrink-0 ${
+                                          t.completed === true || t.completed === "true" || t.completed === 1
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                            : 'bg-amber-50 text-amber-700 border-amber-100'
+                                        }`}>
+                                          {t.completed === true || t.completed === "true" || t.completed === 1 ? "Completed" : "Active"}
+                                        </span>
+                                      </div>
+                                      
+                                      {t.notes && (
+                                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic line-clamp-2">
+                                          &ldquo;{t.notes}&rdquo;
+                                        </p>
+                                      )}
 
-                      {/* Last Active */}
-                      <td className="px-6 py-4">
-                        <span className={`text-xs font-bold ${student.lastActiveDays === 0 ? 'text-emerald-500' : student.lastActiveDays > 5 ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {student.lastActiveText}
-                        </span>
-                      </td>
-
-                      {/* Reminder outreach */}
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => sendOutreachReminder(student)}
-                          className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 text-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center cursor-pointer mx-auto"
-                          title="Send academic reminder notification"
-                        >
-                          <Send size={12} />
-                        </button>
-                      </td>
-                    </tr>
+                                      <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                          t.tag === 'Reading' ? 'bg-indigo-100 text-indigo-700' :
+                                          t.tag === 'Assignment' ? 'bg-orange-100 text-orange-700' :
+                                          t.tag === 'Project' ? 'bg-emerald-100 text-emerald-700' :
+                                          t.tag === 'Study' ? 'bg-pink-100 text-pink-700' : 'bg-slate-200 text-slate-700'
+                                        }`}>
+                                          {t.tag || "Other"}
+                                        </span>
+                                        <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
+                                          <Calendar size={10} />
+                                          {t.due || "No date"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })
               )}
