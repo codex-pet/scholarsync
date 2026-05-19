@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { loadFilesLocally, loadStudySetsLocally, saveStudySetLocally, deleteStudySetLocally } from "../../lib/indexeddb";
+import { generateGroqResponse } from "../../lib/groq";
 import { Flame, Target, TrendingUp, BookOpen, Zap, Loader2, FileText, CheckCircle, XCircle, ChevronRight, ChevronLeft, ArrowLeft, RefreshCw, LibraryBig, Shuffle, ThumbsUp, ThumbsDown, Trash2, Search, SlidersHorizontal, Award, RotateCcw } from "lucide-react";
 import { useToast, ToastContainer } from "@/components/Toast";
 
@@ -137,8 +138,49 @@ export default function StudyCenter() {
       toast.success("AI Study Set Generated!", `Successfully created 10 flashcards and 5 quiz questions for "${file.name}".`);
 
     } catch (err) {
-      console.error("Failed to generate study set", err);
-      toast.error("Generation failed", `Error: ${err.message}. Please check your API key.`);
+      console.warn("Gemini generation failed. Trying Groq fallback...", err);
+      try {
+        const prompt = `You are an expert educator. Based ONLY on the provided document, generate a study set.
+        Return STRICTLY a raw JSON object with this exact structure:
+        {
+          "flashcards": [
+            { "q": "Question text", "a": "Answer text" }
+          ],
+          "quiz": [
+            { "question": "Question text", "options": ["A", "B", "C", "D"], "correctAnswer": "A" }
+          ]
+        }
+        Generate exactly 10 flashcards and 5 quiz questions. Do not include markdown formatting. Return only the JSON string.`;
+
+        const groqTextResponse = await generateGroqResponse({
+          systemInstruction: prompt,
+          prompt: "Generate the study set based on the provided document context.",
+          files: [file],
+          isJSON: true
+        });
+
+        const jsonMatch = groqTextResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error("Could not find a valid JSON object in the Groq response.");
+        }
+        
+        const parsedData = JSON.parse(jsonMatch[0]);
+        
+        const newSet = {
+          fileId: file.id,
+          fileName: file.name,
+          flashcards: parsedData.flashcards,
+          quiz: parsedData.quiz,
+          createdAt: Date.now()
+        };
+
+        await saveStudySetLocally(newSet);
+        setStudySets(prev => ({ ...prev, [file.id]: newSet }));
+        toast.success("AI Study Set Generated!", `Successfully created 10 flashcards and 5 quiz questions for "${file.name}".`);
+      } catch (groqErr) {
+        console.error("Groq fallback generation failed too:", groqErr);
+        toast.error("Generation failed", `Error: ${err.message}. Fallback also failed: ${groqErr.message}`);
+      }
     } finally {
       setIsGenerating(null);
     }
@@ -191,8 +233,47 @@ export default function StudyCenter() {
       toast.success("Study Set Extended!", `Added 10 more flashcards and 5 more quiz questions for "${file.name}".`);
 
     } catch (err) {
-      console.error("Failed to extend study set", err);
-      toast.error("Extension failed", `Error: ${err.message}. Please check your API key.`);
+      console.warn("Gemini extension failed. Trying Groq fallback...", err);
+      try {
+        const prompt = `You are an expert educator. Based ONLY on the provided document, generate a study set.
+        Generate exactly 10 NEW flashcards and 5 NEW quiz questions. Focus on different parts of the document and deeper details. DO NOT repeat concepts.
+        Return STRICTLY a raw JSON object with this exact structure:
+        {
+          "flashcards": [
+            { "q": "Question text", "a": "Answer text" }
+          ],
+          "quiz": [
+            { "question": "Question text", "options": ["A", "B", "C", "D"], "correctAnswer": "A" }
+          ]
+        }
+        Do not include markdown formatting. Return only the JSON string.`;
+
+        const groqTextResponse = await generateGroqResponse({
+          systemInstruction: prompt,
+          prompt: "Generate the extended study set based on the provided document context.",
+          files: [file],
+          isJSON: true
+        });
+
+        const jsonMatch = groqTextResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error("Could not find a valid JSON object in the Groq response.");
+        }
+        const parsedData = JSON.parse(jsonMatch[0]);
+        
+        const newSet = {
+          ...existingSet,
+          flashcards: [...(existingSet.flashcards || []), ...parsedData.flashcards],
+          quiz: [...(existingSet.quiz || []), ...parsedData.quiz]
+        };
+
+        await saveStudySetLocally(newSet);
+        setStudySets(prev => ({ ...prev, [file.id]: newSet }));
+        toast.success("Study Set Extended!", `Added 10 more flashcards and 5 more quiz questions for "${file.name}".`);
+      } catch (groqErr) {
+        console.error("Groq fallback extension failed too:", groqErr);
+        toast.error("Extension failed", `Error: ${err.message}. Fallback also failed: ${groqErr.message}`);
+      }
     } finally {
       setIsGenerating(null);
     }
@@ -359,7 +440,7 @@ export default function StudyCenter() {
         {/* Completion summary */}
         {knownCount === cards.length && (
           <div className="mt-6 bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
-            <p className="font-bold text-green-700">🎉 You've marked all cards as Known!</p>
+            <p className="font-bold text-green-700">🎉 You&apos;ve marked all cards as Known!</p>
             <button onClick={endSession} className="mt-2 text-sm font-bold text-green-600 underline">Back to Study Center</button>
           </div>
         )}

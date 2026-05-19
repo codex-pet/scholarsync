@@ -9,6 +9,7 @@ import {
   MessageSquarePlus, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { saveFileLocally, loadFilesLocally, saveChatSession, loadChatSession, deleteChatSession } from '../../lib/indexeddb';
+import { generateGroqResponse } from '../../lib/groq';
 import Link from 'next/link';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -382,11 +383,60 @@ export default function AIWorkspace() {
         }]);
 
       } catch (err) {
-        let errorMsg = "Sorry, I couldn't generate that correctly. Please make sure you have selected a valid file.";
-        if (err.message && err.message.includes("429")) {
-          errorMsg = "Oops! We're talking a little too fast. Google's free AI limit restricts us to 20 actions per minute. Please wait just a few seconds and try again!";
+        console.warn("Gemini smart action failed. Trying Groq fallback...", err);
+        try {
+          const isFlashcards = prompt.includes("flashcards");
+          const actionText = isFlashcards ? "exactly 5 flashcards" : "exactly 5 quiz questions";
+          const formatString = isFlashcards ? 
+            `{"flashcards": [{"q": "Question", "a": "Answer"}]}` : 
+            `{"quiz": [{"question": "Q text", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]}`;
+            
+          const systemPrompt = `You are an expert educator. Based ONLY on the provided documents, generate ${actionText}. Return STRICTLY a raw JSON object with this exact structure: ${formatString}. Do not include markdown formatting. Return only JSON.`;
+
+          const selectedFiles = isRagMode ? files.filter(f => f.selected) : [];
+          
+          shouldAbortRef.current = false;
+          const groqTextResponse = await generateGroqResponse({
+            systemInstruction: systemPrompt,
+            prompt: `Based on the provided documents, generate ${actionText}.`,
+            files: selectedFiles,
+            isJSON: true
+          });
+
+          if (shouldAbortRef.current) return;
+
+          let responseText = groqTextResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+          const parsedData = JSON.parse(responseText);
+          
+          const targetFile = files.find(f => f.selected);
+          if (targetFile) {
+             const { loadStudySetsLocally, saveStudySetLocally } = await import('../../lib/indexeddb');
+             const existingSets = await loadStudySetsLocally();
+             const existingSet = existingSets.find(s => s.fileId === targetFile.id) || { fileId: targetFile.id, fileName: targetFile.name, flashcards: [], quiz: [], createdAt: Date.now() };
+             
+             if (isFlashcards) {
+               existingSet.flashcards = [...(existingSet.flashcards || []), ...parsedData.flashcards];
+             } else {
+               existingSet.quiz = [...(existingSet.quiz || []), ...parsedData.quiz];
+             }
+             await saveStudySetLocally(existingSet);
+          }
+
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            isWidget: true,
+            widgetType: isFlashcards ? 'flashcards' : 'quiz',
+            content: `I've successfully generated ${isFlashcards ? '5 flashcards' : 'a practice quiz'} based on your material and saved them directly to your Study Center!`,
+            timestamp: Date.now()
+          }]);
+        } catch (groqErr) {
+          console.error("Groq fallback smart action failed too:", groqErr);
+          let errorMsg = "Sorry, I couldn't generate that correctly. Please make sure you have selected a valid file.";
+          if (err.message && err.message.includes("429")) {
+            errorMsg = "Oops! We're talking a little too fast. Google's free AI limit restricts us to 20 actions per minute. Please wait just a few seconds and try again!";
+          }
+          setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, timestamp: Date.now() }]);
         }
-        setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, timestamp: Date.now() }]);
       } finally {
         setIsTyping(false);
       }
@@ -441,11 +491,49 @@ export default function AIWorkspace() {
       
       setMessages(prev => [...prev, { role: 'assistant', content: aiResponse, timestamp: Date.now() }]);
     } catch (error) {
-      let errorMsg = `Sorry, I encountered an error: ${error.message}`;
-      if (error.message?.includes('429')) {
-        errorMsg = "Oops! We're talking a little too fast. Google's free AI limit restricts us to 20 messages per minute. Please wait a few seconds and try again!";
+      console.warn("Gemini chat failed. Trying Groq fallback...", error);
+      try {
+        const systemInstruction = isRagMode 
+          ? `You are an expert academic tutor. You are in 'Grounded Mode'. You must strictly answer questions using ONLY the context provided by the user's selected files. Do not use outside knowledge. If the answer is not within the provided context, state clearly that the provided documents do not contain the answer. IMPORTANT: Do NOT use any Markdown formatting (no asterisks, no hashes, no symbols). Output your response as formal, plain text paragraphs.`
+          : `You are a highly knowledgeable, friendly, and helpful academic assistant. Provide detailed and accurate information to assist the student with their studies. IMPORTANT: Do NOT use any Markdown formatting (no asterisks, no hashes, no symbols). Output your response as formal, plain text paragraphs.`;
+
+        // Format history for Groq
+        const groqHistory = messages.filter(m => !m.isWidget).map(msg => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          content: msg.content
+        }));
+
+        const activeFiles = isRagMode ? files.filter(f => f.selected) : [];
+
+        shouldAbortRef.current = false;
+        const groqResponse = await generateGroqResponse({
+          systemInstruction,
+          history: groqHistory,
+          prompt,
+          files: activeFiles,
+          isJSON: false
+        });
+
+        if (shouldAbortRef.current) return;
+
+        let aiResponse = groqResponse
+          .replace(/\*\*/g, '') 
+          .replace(/\*/g, '')   
+          .replace(/### /g, '') 
+          .replace(/## /g, '')  
+          .replace(/# /g, '')   
+          .replace(/`/g, '')    
+          .replace(/\[|\]/g, '');
+
+        setMessages(prev => [...prev, { role: 'assistant', content: aiResponse, timestamp: Date.now() }]);
+      } catch (groqError) {
+        console.error("Groq fallback chat failed too:", groqError);
+        let errorMsg = `Sorry, I encountered an error: ${error.message}`;
+        if (error.message?.includes('429')) {
+          errorMsg = "Oops! We're talking a little too fast. Google's free AI limit restricts us to 20 messages per minute. Please wait a few seconds and try again!";
+        }
+        setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, timestamp: Date.now() }]);
       }
-      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, timestamp: Date.now() }]);
     } finally {
       setIsTyping(false);
     }
@@ -738,7 +826,7 @@ export default function AIWorkspace() {
                             Select a file to activate RAG Mode
                           </p>
                           <p className="text-[#D84315]/80 text-sm leading-relaxed mb-1">
-                            In <strong>RAG Mode</strong>, the AI reads your uploaded document and answers questions <em>based only on what's inside it</em> — like a tutor who has read your notes.
+                            In <strong>RAG Mode</strong>, the AI reads your uploaded document and answers questions <em>based only on what&apos;s inside it</em> — like a tutor who has read your notes.
                           </p>
                           <p className="text-[#D84315]/60 text-xs">Click a file on the left panel to get started.</p>
                         </div>
