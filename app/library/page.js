@@ -4,9 +4,10 @@ import {
   FileText, ImageIcon, LayoutGrid, List as ListIcon, Trash2, Plus, 
   UploadCloud, Clock, Eye, AlertCircle, X, Search, Check, RefreshCw, BarChart2, Loader2
 } from "lucide-react";
-import { saveFileLocally, loadFilesLocally, deleteFileLocally } from "../../lib/indexeddb";
+import { saveFileLocally, loadFilesLocally, deleteFileLocally, deleteStudySetLocally, deleteChatSession } from "../../lib/indexeddb";
 import { pdfjs } from 'react-pdf';
 import { useToast, ToastContainer } from "@/components/Toast";
+import DocumentViewer from "@/components/DocumentViewer";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -33,6 +34,7 @@ export default function LibraryPage() {
   const [uploadError, setUploadError] = useState(null);
   const [fileToView, setFileToView] = useState(null);
   const [deleteConfirmFiles, setDeleteConfirmFiles] = useState(null); // Custom confirm modal state
+  const [deleteAssociated, setDeleteAssociated] = useState(false);
   
   const fileInputRef = useRef(null);
   const { toasts, toast, dismissToast } = useToast();
@@ -90,11 +92,13 @@ export default function LibraryPage() {
   // --- Handlers ---
   const handleDelete = (id, name) => {
     setDeleteConfirmFiles([{ id, name }]);
+    setDeleteAssociated(false);
   };
 
   const handleBatchDelete = () => {
     const selectedList = files.filter(f => selectedFiles.includes(f.id)).map(f => ({ id: f.id, name: f.name }));
     setDeleteConfirmFiles(selectedList);
+    setDeleteAssociated(false);
   };
 
   const confirmDeletion = async () => {
@@ -103,6 +107,10 @@ export default function LibraryPage() {
       const idsToDelete = deleteConfirmFiles.map(f => f.id);
       for (const id of idsToDelete) {
         await deleteFileLocally(id);
+        if (deleteAssociated) {
+          await deleteStudySetLocally(id).catch(console.error);
+          await deleteChatSession(id).catch(console.error);
+        }
       }
       setFiles(prev => prev.filter(f => !idsToDelete.includes(f.id)));
       setSelectedFiles(prev => prev.filter(id => !idsToDelete.includes(id)));
@@ -117,6 +125,7 @@ export default function LibraryPage() {
       toast.error("Failed to delete selected files.");
     } finally {
       setDeleteConfirmFiles(null);
+      setDeleteAssociated(false);
     }
   };
 
@@ -232,9 +241,21 @@ export default function LibraryPage() {
                   : `Are you sure you want to permanently delete ${deleteConfirmFiles.length} selected files? This action cannot be undone.`}
               </p>
             </div>
+
+            <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors">
+              <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${deleteAssociated ? 'bg-rose-500 border-rose-500 text-white' : 'bg-white border-slate-300'}`}>
+                <Check size={14} className={deleteAssociated ? 'opacity-100' : 'opacity-0'} />
+              </div>
+              <input type="checkbox" className="hidden" checked={deleteAssociated} onChange={(e) => setDeleteAssociated(e.target.checked)} />
+              <div>
+                <p className="text-sm font-bold text-slate-700">Delete associated data</p>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">Also permanently delete any flashcards, quizzes, and chat history generated from this file.</p>
+              </div>
+            </label>
+
             <div className="flex gap-3 pt-2">
               <button
-                onClick={() => setDeleteConfirmFiles(null)}
+                onClick={() => { setDeleteConfirmFiles(null); setDeleteAssociated(false); }}
                 className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-sm transition-all"
               >
                 Cancel
@@ -394,17 +415,28 @@ export default function LibraryPage() {
             <h3 className="font-bold text-lg flex items-center gap-2">
               <FileText size={20} className="text-indigo-400" /> {fileToView.name}
             </h3>
-            <button onClick={() => setFileToView(null)} className="p-2 bg-white/10 hover:bg-rose-500 hover:text-white rounded-xl transition-colors active:scale-95">
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-3">
+              <a 
+                href={fileToView.url} 
+                download={fileToView.name}
+                className="px-4 py-2 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500 hover:text-white border border-indigo-500/30 rounded-xl font-bold text-sm transition-colors"
+              >
+                Download
+              </a>
+              <button onClick={() => setFileToView(null)} className="p-2 bg-white/10 hover:bg-rose-500 hover:text-white rounded-xl transition-colors active:scale-95">
+                <X size={20} />
+              </button>
+            </div>
           </div>
           <div className="flex-1 w-full h-full overflow-hidden bg-[#242424] flex items-center justify-center">
             {['img', 'png', 'jpg', 'jpeg', 'webp'].includes(fileToView.type) ? (
               <div className="w-full h-full flex items-center justify-center p-8">
                 <img src={fileToView.url} alt="Document" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
               </div>
-            ) : (
+            ) : fileToView.type === 'pdf' ? (
               <iframe src={fileToView.url} className="w-full h-full border-none bg-white rounded-t-lg shadow-2xl" title="Document Viewer" />
+            ) : (
+              <DocumentViewer fileToView={fileToView} />
             )}
           </div>
         </div>
@@ -444,74 +476,80 @@ function FileCard({ file, viewMode, isSelected, onToggleSelect, onReSync, onDele
     }
   };
 
+  const memoryPercentage = Math.min(100, Math.max(0, (file.timeLeft / 48) * 100));
+
   return (
-    <div className={`group relative bg-white/40 backdrop-blur-xl border ${isSelected ? 'border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/50 hover:border-white/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)]'} transition-all duration-300 ease-out rounded-[32px] p-6 lg:p-8 flex ${viewMode === 'grid' ? 'flex-col hover:-translate-y-1' : 'flex-col md:flex-row md:items-center justify-between gap-6 hover:scale-[1.005]'
-      }`}>
+    <div className={`group relative bg-white/40 backdrop-blur-xl border ${isSelected ? 'border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/50 hover:border-white/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)]'} transition-all duration-300 ease-out rounded-[32px] p-6 lg:p-8 flex ${viewMode === 'grid' ? 'flex-col hover:-translate-y-1' : 'flex-col md:flex-row md:items-center justify-between hover:scale-[1.005]'} gap-6`}>
+      
+      {/* Top Header -> Left in List Mode */}
+      <div className={`flex items-start gap-4 ${viewMode === 'list' ? 'md:w-[35%] shrink-0' : ''}`}>
+        {/* Selection Checkbox */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          className={`w-5 h-5 mt-1 rounded-md border-2 flex items-center justify-center transition-all shadow-sm shrink-0 ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-white/50 text-transparent hover:border-indigo-400 opacity-0 group-hover:opacity-100'}`}
+        >
+          <Check size={12} className={isSelected ? 'opacity-100' : 'opacity-0'} />
+        </button>
 
-      {/* Selection Checkbox */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
-        className={`absolute top-6 right-6 z-10 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shadow-sm ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white scale-110' : 'border-slate-300 bg-white/50 text-transparent hover:border-indigo-400 opacity-0 group-hover:opacity-100'}`}
-      >
-        <Check size={14} className={isSelected ? 'opacity-100' : 'opacity-0'} />
-      </button>
-
-      {/* Left: Icon & Title */}
-      <div className={`flex flex-col gap-3 ${viewMode === 'list' ? 'md:w-1/3' : ''}`}>
-        <div className="flex items-start gap-3 pr-8">
-          <div className={`p-3 backdrop-blur-md rounded-2xl transition-colors duration-300 border ${isSelected ? 'bg-indigo-500/10 border-indigo-200' : 'bg-white/30 group-hover:bg-white/50 border-white/20'}`}>
-            {isImage ? <ImageIcon className={isSelected ? "text-indigo-600" : "text-slate-500 group-hover:text-indigo-500 transition-colors"} size={24} />
-              : <FileText className={isSelected ? "text-indigo-600" : "text-slate-500 group-hover:text-indigo-500 transition-colors"} size={24} />}
-          </div>
-          <div className="mt-1">
-            <h3 className="font-bold text-[#2B3674] text-lg leading-tight truncate max-w-[180px] xl:max-w-[220px]" title={file.name}>{file.name}</h3>
-            <div className="flex items-center gap-2 mt-1.5">
-              {isProcessing ? <Loader2 size={12} className="animate-spin text-blue-500" />
-                : <span className={`w-2 h-2 rounded-full ${file.statusColor} shadow-sm`}></span>}
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{file.status}</span>
-            </div>
+        <div className={`p-3 backdrop-blur-md rounded-2xl transition-colors duration-300 border shrink-0 ${isSelected ? 'bg-indigo-500/10 border-indigo-200' : 'bg-white/30 group-hover:bg-white/50 border-white/20'}`}>
+          {isImage ? <ImageIcon className={isSelected ? "text-indigo-600" : "text-slate-500 group-hover:text-indigo-500 transition-colors"} size={24} />
+            : <FileText className={isSelected ? "text-indigo-600" : "text-slate-500 group-hover:text-indigo-500 transition-colors"} size={24} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className={`font-bold text-[#2B3674] ${viewMode === 'list' ? 'text-lg' : 'text-base'} leading-tight truncate`} title={file.name}>{file.name}</h3>
+          <div className="flex items-center gap-1.5 mt-1">
+            {isProcessing ? <Loader2 size={10} className="animate-spin text-blue-500" />
+              : <span className={`w-1.5 h-1.5 rounded-full ${file.statusColor} shadow-sm`}></span>}
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{file.status}</span>
           </div>
         </div>
       </div>
 
-      {/* Center: File Metadata */}
-      <div className={`flex flex-wrap items-center gap-x-6 gap-y-3 mt-4 md:mt-0 ${viewMode === 'grid' ? 'justify-between border-t border-slate-100/50 pt-4 mt-6' : 'flex-1 justify-end md:pr-10'}`}>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">File Size</span>
-          <span className="text-sm font-bold text-slate-600 mt-0.5">{file.size}</span>
+      {/* Metadata Grid -> Middle in List Mode */}
+      <div className={`space-y-3 ${viewMode === 'list' ? 'flex-1 md:px-8 md:border-x border-slate-200/50' : ''}`}>
+        <div className="flex justify-between items-center text-sm">
+          <span className="font-medium text-slate-500">Size</span>
+          <span className="font-bold text-slate-700">{file.size}</span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pages</span>
-          <span className="text-sm font-bold text-slate-600 mt-0.5">{file.pages || 1} pg</span>
+        <div className="flex justify-between items-center text-sm">
+          <span className="font-medium text-slate-500">Pages</span>
+          <span className="font-bold text-slate-700">{file.pages || 1}</span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AI Retention</span>
-          <span className={`text-sm font-bold mt-0.5 flex items-center gap-1 ${file.timeLeft <= 5 && file.timeLeft > 0 ? 'text-amber-500 animate-pulse' : file.timeLeft === 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-            <Clock size={12} /> {file.timeLeft === 0 ? "Expired" : `${file.timeLeft}h left`}
-          </span>
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-medium text-slate-500 flex items-center gap-1"><Clock size={14} /> AI Memory</span>
+            <span className={`font-bold ${file.timeLeft <= 5 && file.timeLeft > 0 ? 'text-amber-500 animate-pulse' : file.timeLeft === 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+              {file.timeLeft === 0 ? "Expired" : `${file.timeLeft}h left`}
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+             <div 
+               className={`h-full rounded-full transition-all duration-500 ${file.timeLeft === 0 ? 'bg-rose-400' : 'bg-gradient-to-r from-orange-400 via-purple-400 to-indigo-400'}`} 
+               style={{ width: `${memoryPercentage}%` }}
+             />
+          </div>
         </div>
       </div>
 
-      {/* Right: Actions */}
-      <div className={`flex items-center gap-3 shrink-0 ${viewMode === 'grid' ? 'w-full mt-4 justify-stretch' : 'mt-4 md:mt-0'}`}>
+      {/* Action Buttons -> Right in List Mode */}
+      <div className={`flex gap-3 ${viewMode === 'list' ? 'flex-row md:flex-col md:w-[140px] shrink-0 md:justify-center' : 'items-center pt-2'}`}>
         <button 
           onClick={handleOpen}
           disabled={isProcessing}
-          className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 border flex items-center justify-center gap-1.5 active:scale-95 shadow-sm ${
+          className={`${viewMode === 'list' ? 'flex-1 md:flex-none w-full' : 'flex-1'} py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 border flex items-center justify-center gap-1.5 active:scale-95 shadow-sm ${
             file.status === "Expired" 
               ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500' 
-              : 'bg-white hover:bg-indigo-500 text-slate-600 hover:text-white border-slate-200 hover:border-indigo-500'
+              : 'bg-white text-indigo-600 hover:text-white border-indigo-100 hover:bg-indigo-500 hover:border-indigo-500'
           }`}
         >
-          {file.status === "Expired" ? <><RefreshCw size={14} /> Re-Sync</> : <><Eye size={14} /> View</>}
+          {file.status === "Expired" ? <><RefreshCw size={14} /> Re-Sync</> : "Open"}
         </button>
         <button 
           onClick={() => onDelete(file.id, file.name)} 
           disabled={isProcessing}
-          className="p-3 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-100 rounded-xl transition-all duration-300 active:scale-95 shadow-sm flex items-center justify-center"
-          title="Delete document"
+          className={`${viewMode === 'list' ? 'flex-1 md:flex-none w-full' : 'flex-1'} py-2.5 bg-white hover:bg-rose-50 text-rose-500 border border-rose-100 hover:border-rose-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 active:scale-95 shadow-sm flex items-center justify-center gap-1.5`}
         >
-          <Trash2 size={14} />
+          Delete
         </button>
       </div>
 
